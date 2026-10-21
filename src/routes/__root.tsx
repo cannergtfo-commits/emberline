@@ -9,7 +9,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_NAME },
       { name: "description", content: "Emberline is a pass-and-play war of four banners: Nordmark, the Vael Synod, Heartland, and Mawbrood." },
       { name: "theme-color", content: "#0e1218" },

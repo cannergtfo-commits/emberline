@@ -37,12 +37,15 @@ export function MapView({ dock = "peek" }: { dock?: "peek" | "open" }) {
   const dockShift = useRef(0);
 
   useEffect(() => {
-    if (window.innerWidth >= 768) {
-      dockShift.current = 0;
+    if (dock !== "open") {
+      if (dockShift.current) {
+        cam.current.y += dockShift.current;
+        dockShift.current = 0;
+      }
       return;
     }
     const canvas = canvasRef.current;
-    const sheet = document.querySelector("aside");
+    const sheet = document.querySelector("[data-dock='sheet']");
     if (!canvas || !sheet) return;
     const id = requestAnimationFrame(() => {
       const map = canvas.getBoundingClientRect();
@@ -107,14 +110,17 @@ export function MapView({ dock = "peek" }: { dock?: "peek" | "open" }) {
         if (wantFit.current && viewW > 40 && viewH > 40) {
           const mode = wantFit.current;
           wantFit.current = null;
-          const phone = viewW < 760;
-          if (mode === "keep" && phone) {
-            const keep = current.homeKeep[current.turn - 1];
+          const narrow = Math.min(viewW, viewH) < 520 || viewW < 700;
+          const coarse = window.matchMedia("(pointer: coarse)").matches;
+          if (mode === "keep" && (narrow || coarse)) {
+            const keep = current.homeKeep[current.turn - 1] ?? current.homeKeep[0];
             const towardX = Math.sign((current.width - 1) / 2 - keep.x) || 1;
             const towardY = Math.sign((current.height - 1) / 2 - keep.y) || -1;
-            const fx = keep.x + towardX * 3 + 0.5;
-            const fy = keep.y + towardY * 2 + 0.5;
-            const scale = clampScale(Math.max(56 / TILE, Math.min(1.35, viewW / (8 * TILE))));
+            const fx = keep.x + towardX * (narrow ? 2.5 : 4) + 0.5;
+            const fy = keep.y + towardY * (narrow ? 1.6 : 2.5) + 0.5;
+            const across = narrow ? 6.4 : 12;
+            const cap = narrow ? 1.15 : 1;
+            const scale = clampScale(Math.max(44 / TILE, Math.min(cap, viewW / (across * TILE))));
             cam.current.scale = scale;
             cam.current.x = viewW / 2 - fx * TILE * scale;
             cam.current.y = viewH / 2 - fy * TILE * scale;
@@ -287,7 +293,7 @@ export function MapView({ dock = "peek" }: { dock?: "peek" | "open" }) {
           }
           const dx = e.clientX - g.x;
           const dy = e.clientY - g.y;
-          if (dx * dx + dy * dy > 144) g.moved = true;
+          if (dx * dx + dy * dy > 324) g.moved = true;
           if (g.moved) {
             cam.current.x = g.cx + dx;
             cam.current.y = g.cy + dy;
@@ -317,7 +323,7 @@ export function MapView({ dock = "peek" }: { dock?: "peek" | "open" }) {
           <span className="hud-chip text-lg">{banner}</span>
         </p>
       ) : null}
-      <div className="absolute top-3 right-3 flex gap-2">
+      <div className="absolute top-2 right-[max(0.5rem,env(safe-area-inset-right))] flex gap-1.5">
         <Btn
           tone="line"
           className="square"
@@ -341,6 +347,15 @@ export function MapView({ dock = "peek" }: { dock?: "peek" | "open" }) {
           }}
         >
           −
+        </Btn>
+        <Btn
+          tone="line"
+          className="compact"
+          onClick={() => {
+            wantFit.current = "keep";
+          }}
+        >
+          Base
         </Btn>
         <Btn
           tone="line"

@@ -34,11 +34,28 @@
     background: var(--color-parchment);
     color: var(--color-fg);
     font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body {
+    height: 100%;
+    overscroll-behavior: none;
   }
 
   .war-room {
     background: var(--color-parchment);
     color: var(--color-fg);
+    overflow-x: clip;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  .manual-copy,
+  .manual-copy * {
+    -webkit-user-select: text;
+    user-select: text;
   }
 
   .war-sheet,
@@ -57,6 +74,98 @@
   .orders-sheet {
     padding-bottom: env(safe-area-inset-bottom);
     touch-action: pan-y;
+  }
+
+  .touch-dock {
+    background: color-mix(in oklab, var(--color-panel) 96%, transparent);
+    border-top: 1px solid var(--color-line);
+    padding-bottom: env(safe-area-inset-bottom);
+    min-height: calc(5.25rem + env(safe-area-inset-bottom));
+  }
+
+  .touch-rail {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 5.25rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 0.45rem 0.75rem;
+    scrollbar-width: none;
+    touch-action: pan-x;
+  }
+
+  .touch-rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .touch-rail .game-btn {
+    flex: none;
+    max-width: none;
+    white-space: nowrap;
+  }
+
+  .touch-rail-status {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 7.25rem;
+    max-width: 10.5rem;
+    min-height: 3rem;
+    font-size: 0.8rem;
+    line-height: 1.15;
+  }
+
+  .touch-rail-pin {
+    position: sticky;
+    right: 0;
+    background: var(--color-panel);
+    box-shadow: -10px 0 14px var(--color-panel);
+  }
+
+  .touch-chip {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.05rem;
+    min-width: 4.75rem;
+    max-width: 7.25rem;
+    min-height: 4.25rem;
+    padding: 0.25rem 0.4rem;
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+    background: var(--color-parchment-deep);
+    color: var(--color-fg);
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .touch-chip:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .touch-chip:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .h-scroll {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+
+  .h-scroll::-webkit-scrollbar {
+    display: none;
   }
 
   .menu-enter {
@@ -239,6 +348,18 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+
+  @media (pointer: coarse) {
+    .game-btn {
+      min-height: 3rem;
+    }
+
+    .game-btn.square {
+      width: 3rem;
+      min-width: 3rem;
+      height: 3rem;
     }
   }
 

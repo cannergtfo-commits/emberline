@@ -23,6 +23,8 @@ import {
   propertyCount,
   unitAt,
   unitById,
+  type Hints,
+  type Unit,
   type World,
 } from "@/game/rules";
 import { useGame } from "@/game/store";
@@ -120,16 +122,16 @@ function Title({ onManual }: { onManual: () => void }) {
   const patchSetup = useGame((s) => s.patchSetup);
   const resume = useGame((s) => s.resume);
   return (
-    <main className="menu-enter mx-auto grid max-w-5xl items-start gap-8 px-5 py-6 md:min-h-dvh md:grid-cols-[1.05fr_0.95fr] md:items-center md:gap-10 md:py-8">
-      <div>
+    <main className="menu-enter mx-auto flex min-h-dvh w-full min-w-0 max-w-5xl flex-col items-center gap-6 px-[max(1.25rem,env(safe-area-inset-left))] py-6 pt-[max(1.25rem,env(safe-area-inset-top))] pr-[max(1.25rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:grid lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:px-8">
+      <div className="w-full max-w-md lg:max-w-none">
         <p className="text-xs font-semibold tracking-wide text-ember uppercase">Hotseat tactics</p>
         <h1 className="ui-title mt-2 text-5xl text-fg md:text-6xl">Emberline</h1>
         <p className="mt-3 max-w-md text-base leading-relaxed text-fg-soft">
           Nordmark, the Vael Synod, Heartland, and Mawbrood. Two to four players on one device.
         </p>
-        <div className="mt-7 grid max-w-sm gap-2">
+        <div className="mt-6 grid w-full gap-2.5">
           <Btn
-            className="w-full"
+            className="min-h-14 w-full text-base"
             onClick={() => {
               patchSetup({ mode: "hotseat" });
               setPhase("setup");
@@ -139,7 +141,7 @@ function Title({ onManual }: { onManual: () => void }) {
           </Btn>
           <Btn
             tone="gale"
-            className="w-full"
+            className="min-h-14 w-full text-base"
             onClick={() => {
               patchSetup({ mode: "alliance", mapId: "crown" });
               setPhase("setup");
@@ -149,7 +151,7 @@ function Title({ onManual }: { onManual: () => void }) {
           </Btn>
           <Btn
             tone="line"
-            className="w-full"
+            className="min-h-14 w-full text-base"
             onClick={() => {
               patchSetup({ mode: "drill", mapId: "ridge" });
               setPhase("setup");
@@ -168,7 +170,7 @@ function Title({ onManual }: { onManual: () => void }) {
           Rules
         </button>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid w-full grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-3">
         <Portrait id="nord" />
         <Portrait id="vael" />
         <Portrait id="heart" />
@@ -182,7 +184,7 @@ function Portrait({ id, large = false }: { id: CommanderId; large?: boolean }) {
   const c = COMMANDERS[id];
   return (
     <figure className={cn("war-frame", large && "mx-auto max-w-xs")}>
-      <img src={CO_SRC[id]} alt={c.name} className={cn("w-full object-cover", large ? "h-72 sm:h-80" : "h-28 sm:h-40")} />
+      <img src={CO_SRC[id]} alt={c.name} className={cn("w-full object-cover", large ? "h-52 max-h-[36dvh] sm:h-72 lg:h-80" : "h-20 sm:h-28 lg:h-40")} />
       <figcaption className="px-3 py-2">
         <p className="text-base font-semibold leading-tight">{c.name}</p>
         <p className="text-xs text-muted">{c.pact}</p>
@@ -214,7 +216,7 @@ function Setup({ onManual }: { onManual: () => void }) {
   const kicker =
     setup.mode === "drill" ? "Practice" : setup.mode === "alliance" ? "Two versus two" : "Pass and play";
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-8 px-5 py-8">
+    <main className="mx-auto flex w-full min-w-0 max-w-5xl flex-col gap-6 px-[max(1rem,env(safe-area-inset-left))] pt-[max(1.25rem,env(safe-area-inset-top))] pr-[max(1rem,env(safe-area-inset-right))] pb-32">
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-xs font-semibold tracking-wide text-ember uppercase">{kicker}</p>
@@ -224,14 +226,17 @@ function Setup({ onManual }: { onManual: () => void }) {
           Back
         </Btn>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="h-scroll snap-x snap-mandatory gap-3 pb-1 lg:grid lg:grid-cols-2 lg:overflow-visible xl:grid-cols-3">
         {maps.map((map) => (
           <button
             key={map.id}
             type="button"
             aria-pressed={setup.mapId === map.id}
             onClick={() => patchSetup({ mapId: map.id })}
-            className={cn("war-frame text-left", setup.mapId === map.id && "is-on")}
+            className={cn(
+              "w-[78%] max-w-xs shrink-0 snap-center war-frame text-left lg:w-auto lg:max-w-none",
+              setup.mapId === map.id && "is-on",
+            )}
           >
             <Preview id={map.id} />
             <p className="mt-3 text-xl font-semibold tracking-tight">{map.name}</p>
@@ -240,7 +245,7 @@ function Setup({ onManual }: { onManual: () => void }) {
           </button>
         ))}
       </div>
-      <div className={cn("grid gap-6", seats > 2 ? "lg:grid-cols-2" : "md:grid-cols-2")}>
+      <div className={cn("grid min-w-0 gap-6", seats > 2 ? "lg:grid-cols-2" : "md:grid-cols-2")}>
         {picks.map(([key, value, seat], index) => (
           <CommanderPick
             key={key}
@@ -264,29 +269,33 @@ function Setup({ onManual }: { onManual: () => void }) {
           Ember fights with Flint. Gale fights with Tide. You cannot strike or seize an ally, and you share what you see. Funds stay with each seat.
         </p>
       ) : null}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 pb-2">
         <button
           type="button"
           role="switch"
           aria-checked={setup.fog}
           onClick={() => patchSetup({ fog: !setup.fog })}
-          className="flex h-11 items-center gap-3 text-left text-sm"
+          className="flex min-h-12 items-center gap-3 text-left text-sm"
         >
-          <span className={cn("h-6 w-11 rounded-full p-1", setup.fog ? "bg-gale" : "bg-line")}>
-            <span className={cn("block size-4 rounded-full bg-panel", setup.fog && "translate-x-5")} />
+          <span className={cn("h-7 w-12 shrink-0 rounded-full p-1", setup.fog ? "bg-gale" : "bg-line")}>
+            <span className={cn("block size-5 rounded-full bg-panel", setup.fog && "translate-x-5")} />
           </span>
           Fog of war — forests and towns hide units until you stand beside them
         </button>
-        <div className="flex gap-2">
+        <p className="text-sm text-muted">
+          Seat colors stay Ember, Gale, Flint, and Tide, even if two players choose the same banner.
+        </p>
+      </div>
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-parchment/95 px-[max(1rem,env(safe-area-inset-left))] py-3 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-sm">
+        <div className="mx-auto flex max-w-5xl items-center gap-2">
           <Btn tone="ghost" onClick={onManual}>
             Rules
           </Btn>
-          <Btn onClick={() => begin()}>Start match</Btn>
+          <Btn className="min-h-14 flex-1 text-base" onClick={() => begin()}>
+            Start match
+          </Btn>
         </div>
       </div>
-      <p className="text-sm text-muted">
-        Seat colors stay Ember, Gale, Flint, and Tide, even if two players choose the same banner.
-      </p>
     </main>
   );
 }
@@ -305,7 +314,27 @@ function CommanderPick({
   return (
     <section>
       <h2 className={cn("mb-3 text-lg font-semibold tracking-tight", tone)}>{label}</h2>
-      <div className="grid gap-2">
+      <div className="h-scroll gap-2 pb-1 lg:hidden">
+        {COMMANDER_IDS.map((id) => {
+          const c = COMMANDERS[id];
+          const on = value === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange(id)}
+              className={cn("war-frame w-28 shrink-0 text-left", on && "is-on")}
+            >
+              <img src={CO_SRC[id]} alt="" className="h-24 w-full rounded-lg object-cover" />
+              <span className="mt-2 block text-sm font-semibold leading-tight">{c.name}</span>
+              <span className="mt-0.5 block text-xs text-ember">{c.power}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-sm leading-snug text-muted lg:hidden">{COMMANDERS[value].blurb}</p>
+      <div className="hidden gap-2 lg:grid">
         {COMMANDER_IDS.map((id) => {
           const c = COMMANDERS[id];
           const on = value === id;
@@ -385,17 +414,17 @@ function Pass() {
   if (!world) return null;
   const co = COMMANDERS[commanderOf(world, world.turn)];
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-6 px-5 py-10 text-center">
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-5 px-[max(1.25rem,env(safe-area-inset-left))] py-8 pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.25rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center">
       <p className="text-xs font-semibold tracking-wide text-muted uppercase">Next player</p>
       <Portrait id={co.id} large />
       <div>
         <h1 className="ui-title text-4xl">{co.name}</h1>
         <p className={cn("mt-1 font-semibold", seatText(world.turn))}>{seatLine(world)}</p>
         <p className="mt-3 text-fg-soft">
-          Funds {coins(world.funds[world.turn - 1])}. The map stays hidden until you look.
+          Funds {coins(world.funds[world.turn - 1])}. Hand over the device, then tap Ready. The map stays hidden until you look.
         </p>
       </div>
-      <Btn onClick={() => ready()} className="w-full max-w-xs">
+      <Btn onClick={() => ready()} className="min-h-16 w-full max-w-sm text-lg">
         Ready
       </Btn>
     </main>
@@ -415,18 +444,20 @@ function Battle({ onManual }: { onManual: () => void }) {
   const buildAt = useGame((s) => s.buildAt);
   const token = `${selectedId ?? ""}|${pending ? `${pending.unitId}@${pending.x},${pending.y}` : ""}|${buildAt ? `${buildAt.x},${buildAt.y}` : ""}`;
   const [track, setTrack] = useState(token);
-  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [details, setDetails] = useState(false);
   if (track !== token) {
     setTrack(token);
-    setOrdersOpen(token !== "||");
+    if (!selectedId && !pending) setDetails(false);
+    if (buildAt) setDetails(false);
   }
   if (!world) return null;
   const co = COMMANDERS[commanderOf(world, world.turn)];
   const drilling = world.mode === "drill" && world.turn === 2;
+  const orderProps = { onManual, canUndo: history > 0 && !drilling, onUndo: undo, onDetails: () => setDetails(true) };
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <header className="war-bar flex items-center gap-2 px-2 py-1.5 sm:gap-3 sm:px-3 sm:py-2">
-        <img src={CO_SRC[co.id]} alt="" className="size-10 rounded-xl object-cover sm:size-12" />
+      <header className="war-bar flex items-center gap-2 px-[max(0.5rem,env(safe-area-inset-left))] py-1.5 pt-[max(0.35rem,env(safe-area-inset-top))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:gap-3 sm:py-2">
+        <img src={CO_SRC[co.id]} alt="" className="size-10 shrink-0 rounded-xl object-cover sm:size-12" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-base font-semibold leading-none sm:text-lg">{drilling ? "Drill" : co.name}</p>
           <p className={cn("truncate text-xs sm:text-sm", seatText(world.turn))}>
@@ -434,7 +465,7 @@ function Battle({ onManual }: { onManual: () => void }) {
           </p>
         </div>
         <p className="text-sm font-semibold tabular-nums sm:text-base">{coins(world.funds[world.turn - 1])}</p>
-        <Btn tone="line" className="compact size-11 px-0 sm:size-12" onClick={toggleSound} aria-label={sound ? "Mute" : "Sound on"}>
+        <Btn tone="line" className="square" onClick={toggleSound} aria-label={sound ? "Mute" : "Sound on"}>
           {sound ? <Volume2 className="size-5" /> : <VolumeX className="size-5" />}
         </Btn>
         <Btn tone={endArmed ? "solid" : "line"} className="compact px-3" onClick={() => endDay()} disabled={drilling}>
@@ -442,38 +473,205 @@ function Battle({ onManual }: { onManual: () => void }) {
           <span className="hidden sm:inline">{endArmed ? "Confirm end" : "End day"}</span>
         </Btn>
       </header>
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-        <div className="relative min-h-0 flex-1 max-md:pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
-          <MapView dock={ordersOpen ? "open" : "peek"} />
-        </div>
-        <aside
-          className={cn(
-            "orders-sheet war-sheet z-20 shrink-0 border-brass md:min-h-0 md:w-96 md:overflow-y-auto md:border-l",
-            "max-md:fixed max-md:inset-x-0 max-md:bottom-0 max-md:border-t max-md:shadow-[0_-10px_28px_rgba(28,23,18,0.28)]",
-            ordersOpen ? "max-md:max-h-[min(70dvh,36rem)] max-md:overflow-y-auto" : "max-md:h-[calc(4.5rem+env(safe-area-inset-bottom))] max-md:overflow-hidden",
-          )}
-        >
-          <button
-            type="button"
-            className="sticky top-0 z-10 flex w-full flex-col items-center bg-parchment/95 py-2 md:hidden"
-            aria-expanded={ordersOpen}
-            onClick={() => setOrdersOpen((v) => !v)}
-          >
-            <span className="h-1.5 w-14 rounded-full bg-brass" />
-            <span className="mt-1 text-xs font-semibold tracking-wide text-muted uppercase">
-              {ordersOpen ? "Hide orders" : selectedId ? "Orders ready" : "Orders"}
-            </span>
-          </button>
-          <div className={cn(!ordersOpen && "max-md:hidden")}>
-            <Orders onManual={onManual} canUndo={history > 0 && !drilling} onUndo={undo} />
+      <div className="flex min-h-0 flex-1 lg:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="relative min-h-0 flex-1">
+            <MapView dock={details ? "open" : "peek"} />
           </div>
+          <div className="touch-dock shrink-0 lg:hidden">
+            <Orders {...orderProps} mode="rail" />
+          </div>
+        </div>
+        <aside className="orders-sheet war-sheet hidden min-h-0 w-96 shrink-0 overflow-y-auto border-l lg:block">
+          <Orders {...orderProps} />
         </aside>
       </div>
+      {details ? (
+        <div className="fixed inset-0 z-30 flex items-end bg-ink/55 lg:hidden" onClick={() => setDetails(false)}>
+          <div
+            role="dialog"
+            aria-label="Orders"
+            data-dock="sheet"
+            className="orders-sheet war-sheet max-h-[min(78dvh,40rem)] w-full overflow-y-auto rounded-t-2xl border-t"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-parchment/95 px-3 py-1">
+              <span className="text-xs font-semibold tracking-wide text-muted uppercase">Orders</span>
+              <Btn tone="ghost" onClick={() => setDetails(false)}>
+                Close
+              </Btn>
+            </div>
+            <Orders {...orderProps} />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Orders({ onManual, canUndo, onUndo }: { onManual: () => void; canUndo: boolean; onUndo: () => void }) {
+function OrderRail({
+  world,
+  co,
+  pct,
+  selected,
+  hints,
+  shops,
+  building,
+  canUndo,
+  onUndo,
+  onDetails,
+}: {
+  world: World;
+  co: (typeof COMMANDERS)[CommanderId];
+  pct: number;
+  selected: Unit | undefined;
+  hints: Hints | null;
+  shops: { x: number; y: number; kind: "factory" | "airport" }[];
+  building: string | null;
+  canUndo: boolean;
+  onUndo: () => void;
+  onDetails?: () => void;
+}) {
+  const callPower = useGame((s) => s.callPower);
+  const doWait = useGame((s) => s.doWait);
+  const doCapture = useGame((s) => s.doCapture);
+  const doSupply = useGame((s) => s.doSupply);
+  const doAttack = useGame((s) => s.doAttack);
+  const doDrop = useGame((s) => s.doDrop);
+  const doBuild = useGame((s) => s.doBuild);
+  const openBuild = useGame((s) => s.openBuild);
+  const cancelPending = useGame((s) => s.cancelPending);
+  const pending = useGame((s) => s.pending);
+  const openDetails = onDetails ?? (() => {});
+
+  if (building === "factory" || building === "airport") {
+    const facility = building === "airport" ? "airport" : "factory";
+    const faction = commanderOf(world, world.turn);
+    const funds = world.funds[world.turn - 1];
+    return (
+      <div className="touch-rail">
+        <Btn tone="ghost" className="shrink-0" onClick={() => cancelPending()}>
+          Close
+        </Btn>
+        {UNIT_KINDS.filter((k) => UNITS[k].facility === facility).map((kind) => {
+          const def = UNITS[kind];
+          const still = unitStill(faction, kind);
+          return (
+            <button key={kind} type="button" className="touch-chip" disabled={funds < def.cost} onClick={() => doBuild(kind)}>
+              {still ? <img src={still} alt="" className="size-10 object-contain" /> : null}
+              <span className="max-w-24 truncate">{unitTitle(faction, kind)}</span>
+              <span className="font-medium text-muted tabular-nums">{coins(def.cost)}</span>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  const mine = selected && selected.player === world.turn && !selected.done;
+  let sub = "or a works to build";
+  if (selected) {
+    const hp = `HP ${Math.ceil(selected.hp / 10)}/10`;
+    if (selected.player !== world.turn) {
+      sub = `${hp} · ${allied(world, selected.player, world.turn) ? "ally" : "enemy"}`;
+    } else if (selected.done) sub = `${hp} · already acted`;
+    else if (pending) sub = `${hp} · choose an order`;
+    else sub = `${hp} · tap a blue tile`;
+  }
+
+  return (
+    <div className="touch-rail">
+      <div className="touch-rail-status">
+        <span className="truncate font-semibold">
+          {selected ? unitTitle(world.commanders[selected.player - 1], selected.kind) : "Tap a unit"}
+        </span>
+        <span className="truncate text-muted">{sub}</span>
+      </div>
+      {pct >= 100 && !world.powerActive[world.turn - 1] ? (
+        <Btn className="shrink-0" onClick={() => callPower()}>
+          {co.power}
+        </Btn>
+      ) : null}
+      {pending && hints?.canWait ? (
+        <Btn className="shrink-0" onClick={() => doWait()}>
+          <Icon name="wait" /> Wait
+        </Btn>
+      ) : null}
+      {pending && hints?.board ? (
+        <Btn className="shrink-0" onClick={() => doWait()}>
+          <Icon name="drop" /> Board
+        </Btn>
+      ) : null}
+      {pending && hints?.canCapture ? (
+        <Btn tone="gale" className="shrink-0" onClick={() => doCapture()}>
+          <Icon name="seize" /> Seize
+        </Btn>
+      ) : null}
+      {pending && hints?.canSupply ? (
+        <Btn tone="line" className="shrink-0" onClick={() => doSupply()}>
+          <Icon name="supply" /> Supply
+        </Btn>
+      ) : null}
+      {pending
+        ? hints?.attacks.map((a) => (
+            <Btn key={a.unitId} tone="line" className="shrink-0" onClick={() => doAttack(a.unitId)}>
+              <Icon name="strike" /> Strike {a.dmgMin}–{a.dmgMax}%
+            </Btn>
+          ))
+        : null}
+      {!pending && mine && hints
+        ? hints.attacks.map((a) => (
+            <Btn key={a.unitId} tone="line" className="shrink-0" onClick={() => doAttack(a.unitId)}>
+              <Icon name="strike" /> Here {a.dmgMin}–{a.dmgMax}%
+            </Btn>
+          ))
+        : null}
+      {pending
+        ? hints?.drops.map((d) => (
+            <Btn key={`${d.x},${d.y}`} tone="line" className="shrink-0" onClick={() => doDrop(d)}>
+              <Icon name="drop" /> Drop {d.x + 1},{d.y + 1}
+            </Btn>
+          ))
+        : null}
+      {pending ? (
+        <Btn tone="ghost" className="shrink-0" onClick={() => cancelPending()}>
+          Cancel
+        </Btn>
+      ) : null}
+      {!selected && shops.length === 1 ? (
+        <Btn tone="line" className="shrink-0" onClick={() => openBuild(shops[0])}>
+          <Icon name={shops[0].kind === "airport" ? "air" : "works"} />
+          {shops[0].kind === "airport" ? "Airfield" : "Works"}
+        </Btn>
+      ) : null}
+      {!selected && shops.length > 1 ? (
+        <Btn tone="line" className="shrink-0" onClick={openDetails}>
+          <Icon name="works" /> Build
+        </Btn>
+      ) : null}
+      <Btn tone="line" className="shrink-0" onClick={onUndo} disabled={!canUndo}>
+        <Icon name="undo" /> Undo
+      </Btn>
+      <Btn tone="line" className="touch-rail-pin shrink-0" onClick={openDetails}>
+        Details
+      </Btn>
+    </div>
+  );
+}
+
+function Orders({
+  onManual,
+  canUndo,
+  onUndo,
+  mode = "panel",
+  onDetails,
+}: {
+  onManual: () => void;
+  canUndo: boolean;
+  onUndo: () => void;
+  mode?: "panel" | "rail";
+  onDetails?: () => void;
+}) {
   const world = useGame((s) => s.world);
   const selectedId = useGame((s) => s.selectedId);
   const pending = useGame((s) => s.pending);
@@ -506,6 +704,7 @@ function Orders({ onManual, canUndo, onUndo }: { onManual: () => void; canUndo: 
     }
   }
   const building = buildAt ? world.terrain[buildAt.y][buildAt.x] : null;
+  if (mode === "rail") return <OrderRail world={world} co={co} pct={pct} selected={selected} hints={hints} shops={shops} building={building} canUndo={canUndo} onUndo={onUndo} onDetails={onDetails} />;
   return (
     <div className="flex flex-col gap-4 p-4">
       <div>
@@ -563,38 +762,38 @@ function Orders({ onManual, canUndo, onUndo }: { onManual: () => void; canUndo: 
           {pending ? (
             <div className="mt-3 flex flex-col gap-2">
               {hints.canWait ? (
-                <Btn className="w-full" onClick={() => doWait()}>
+                <Btn className="min-h-14 w-full text-base" onClick={() => doWait()}>
                   <Icon name="wait" /> Wait
                 </Btn>
               ) : null}
               {hints.board ? (
-                <Btn className="w-full" align="start" onClick={() => doWait()}>
+                <Btn className="min-h-14 w-full text-base" align="start" onClick={() => doWait()}>
                   <Icon name="drop" /> Board {hints.board.name}
                 </Btn>
               ) : null}
               {hints.canCapture ? (
-                <Btn tone="gale" className="w-full" onClick={() => doCapture()}>
+                <Btn tone="gale" className="min-h-14 w-full text-base" onClick={() => doCapture()}>
                   <Icon name="seize" /> Seize
                 </Btn>
               ) : null}
               {hints.canSupply ? (
-                <Btn tone="line" className="w-full" align="start" onClick={() => doSupply()}>
+                <Btn tone="line" className="min-h-14 w-full text-base" align="start" onClick={() => doSupply()}>
                   <Icon name="supply" /> Resupply neighbors
                 </Btn>
               ) : null}
               {hints.attacks.map((a) => (
-                <Btn key={a.unitId} tone="line" className="w-full" align="start" onClick={() => doAttack(a.unitId)}>
+                <Btn key={a.unitId} tone="line" className="min-h-14 w-full text-base" align="start" onClick={() => doAttack(a.unitId)}>
                   <Icon name="strike" />
                   Strike {strikeName(world, a.unitId, a.kind)} · {a.dmgMin}–{a.dmgMax}%
                   {a.counterMax ? ` · back ${a.counterMin}–${a.counterMax}%` : ""}
                 </Btn>
               ))}
               {hints.drops.map((d) => (
-                <Btn key={`${d.x},${d.y}`} tone="line" className="w-full" align="start" onClick={() => doDrop(d)}>
+                <Btn key={`${d.x},${d.y}`} tone="line" className="min-h-14 w-full text-base" align="start" onClick={() => doDrop(d)}>
                   <Icon name="drop" /> Drop at {d.x + 1},{d.y + 1}
                 </Btn>
               ))}
-              <Btn tone="ghost" className="w-full" onClick={() => cancelPending()}>
+              <Btn tone="ghost" className="min-h-14 w-full text-base" onClick={() => cancelPending()}>
                 Cancel
               </Btn>
             </div>
@@ -602,7 +801,7 @@ function Orders({ onManual, canUndo, onUndo }: { onManual: () => void; canUndo: 
           {!pending && hints.attacks.length > 0 && selected.player === world.turn && !selected.done ? (
             <div className="mt-3 flex flex-col gap-2">
               {hints.attacks.map((a) => (
-                <Btn key={a.unitId} tone="line" className="w-full" align="start" onClick={() => doAttack(a.unitId)}>
+                <Btn key={a.unitId} tone="line" className="min-h-14 w-full text-base" align="start" onClick={() => doAttack(a.unitId)}>
                   <Icon name="strike" />
                   Strike in place · {strikeName(world, a.unitId, a.kind)} {a.dmgMin}–{a.dmgMax}%
                 </Btn>
@@ -611,7 +810,7 @@ function Orders({ onManual, canUndo, onUndo }: { onManual: () => void; canUndo: 
           ) : null}
         </section>
       ) : (
-        <p className="text-sm text-fg-soft">Select a unit, or a works to build. Drag the map to pan.</p>
+        <p className="text-sm text-fg-soft">Tap a unit, or a works to build. Drag to pan. Pinch to zoom.</p>
       )}
 
       {buildAt && building ? (
@@ -688,7 +887,7 @@ function BuildRow({
   const still = unitStill(faction, kind);
   const range = def.range ? (def.range.min === def.range.max ? "adjacent" : `${def.range.min}–${def.range.max}`) : "no gun";
   return (
-    <Btn tone="line" align="start" className="w-full" disabled={funds < def.cost} onClick={onBuild}>
+    <Btn tone="line" align="start" className="min-h-14 w-full text-base" disabled={funds < def.cost} onClick={onBuild}>
       {still ? <img src={still} alt="" className="size-14 object-contain" /> : null}
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline justify-between gap-3">
@@ -720,7 +919,7 @@ function Over() {
       : null;
   const co = world.winner ? COMMANDERS[commanderOf(world, world.winner)] : null;
   return (
-    <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-5 px-5 py-10 text-center">
+    <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-5 px-[max(1.25rem,env(safe-area-inset-left))] py-8 pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.25rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] text-center">
       <p className="text-xs font-semibold tracking-wide text-ember uppercase">Match over</p>
       {team ? (
         <div className="grid w-full grid-cols-2 gap-3">
@@ -737,9 +936,11 @@ function Over() {
         Day {world.day}
         {world.losses.map((n, i) => ` · ${SEAT_NAME[(i + 1) as PlayerId]} ${n}`).join("")}
       </p>
-      <div className="flex gap-2">
-        <Btn onClick={() => rematch()}>Rematch</Btn>
-        <Btn tone="line" onClick={() => setPhase("title")}>
+      <div className="flex w-full max-w-sm flex-col gap-2 sm:flex-row sm:justify-center">
+        <Btn className="min-h-14 flex-1" onClick={() => rematch()}>
+          Rematch
+        </Btn>
+        <Btn tone="line" className="min-h-14 flex-1" onClick={() => setPhase("title")}>
           Menu
         </Btn>
       </div>
@@ -759,7 +960,7 @@ function Manual({ onClose }: { onClose: () => void }) {
             Close
           </Btn>
         </div>
-        <div className="mt-4 space-y-4 text-sm leading-relaxed text-fg-soft">
+        <div className="manual-copy mt-4 space-y-4 text-sm leading-relaxed text-fg-soft">
           <p>Pass the device at the end of each day. The map hides between turns.</p>
           <p>Every town, works, airfield, and keep you hold pays 1,000 at dawn. Repairs on your own ground cost a little of that.</p>
           <p>Huscarls, riflemen, starblades, and gnashes seize property, and so do their heavy cousins. A healthy soldier takes most holdings in two days. Taking a keep knocks that army out. In a two-banner battle, that wins.</p>
@@ -769,7 +970,7 @@ function Manual({ onClose }: { onClose: () => void }) {
           <p>Aircraft burn fuel every dawn and fall if they run dry. Parking on your airfield refuels them. Haulers and kites carry one soldier and can resupply neighbors.</p>
           <p>Powers charge as damage is dealt and taken. They last until you end the day.</p>
           <p>Mountains block every unit, including aircraft. Forests can be marched — wheels and treads are slower there — and under fog they hide units until a friend stands beside them.</p>
-          <p>You win by taking the enemy keep, or if the other army cannot field a unit. Days do not run out. Undo rewinds your last order this day. Drag the map and pinch to zoom on a touch screen. Arrows move the cursor, Enter confirms, E ends the day.</p>
+          <p>You win by taking the enemy keep, or if the other army cannot field a unit. Days do not run out. Undo rewinds your last order this day. On a phone or tablet, tap a unit, then tap a blue tile to move or a red tile to aim. Drag to pan and pinch to zoom. Wait, Seize, Strike, and Build sit on the bar at the bottom. Details opens the log and resign. On a keyboard, arrows move the cursor, Enter confirms, and E ends the day.</p>
           <p>Music changes with the screen and the map, and it quiets while you pass the device. Mute silences the music and the cues together.</p>
         </div>
       </div>
