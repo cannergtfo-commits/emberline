@@ -1,0 +1,256 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  --font-display: ui-sans-serif, "Segoe UI", system-ui, sans-serif;
+  --color-ink: #10141a;
+  --color-fg: #eef2f6;
+  --color-fg-soft: #b7c2ce;
+  --color-muted: #8d99a8;
+  --color-parchment: #0e1218;
+  --color-parchment-deep: #090c10;
+  --color-panel: #171d26;
+  --color-line: #2c3644;
+  --color-brass: #8d99a8;
+  --color-ember: #c4491d;
+  --color-ember-deep: #8c3014;
+  --color-gale: #1b6b66;
+  --color-gale-deep: #0e3f3c;
+  --color-flint: #a16207;
+  --color-flint-deep: #6b4105;
+  --color-tide: #2a4e8f;
+  --color-tide-deep: #1a3260;
+  --radius-control: 0.5rem;
+  --radius-card: 1rem;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  body {
+    background: var(--color-parchment);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+  }
+
+  .war-room {
+    background: var(--color-parchment);
+    color: var(--color-fg);
+  }
+
+  .war-sheet,
+  .war-bar {
+    background: color-mix(in oklab, var(--color-panel) 92%, transparent);
+  }
+
+  .war-bar {
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .war-sheet {
+    border-color: var(--color-line);
+  }
+
+  .orders-sheet {
+    padding-bottom: env(safe-area-inset-bottom);
+    touch-action: pan-y;
+  }
+
+  .menu-enter {
+    animation: menu-rise 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .game-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    max-width: 100%;
+    padding: 0.55rem 1rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    background: transparent;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    line-height: 1.25;
+    transition-property: transform, background-color, border-color, color;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .game-btn-solid {
+    background: var(--color-ember);
+    color: #fff;
+  }
+
+  .game-btn-solid:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-ember) 86%, white);
+  }
+
+  .game-btn-gale {
+    background: var(--color-gale);
+    color: #f3fffe;
+  }
+
+  .game-btn-gale:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-gale) 86%, white);
+  }
+
+  .game-btn-line {
+    background: var(--color-panel);
+    color: var(--color-fg);
+    border-color: var(--color-line);
+  }
+
+  .game-btn-line:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-panel) 78%, white);
+  }
+
+  .game-btn-ghost {
+    background: transparent;
+    color: var(--color-fg-soft);
+    border-color: transparent;
+  }
+
+  .game-btn-ghost:hover:not(:disabled) {
+    background: color-mix(in oklab, var(--color-fg) 8%, transparent);
+    color: var(--color-fg);
+  }
+
+  .game-btn.square {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+  }
+
+  .game-btn.compact {
+    min-height: 2.75rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  .game-btn-label {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    max-width: 100%;
+    text-align: center;
+  }
+
+  .game-btn.is-start {
+    justify-content: flex-start;
+  }
+
+  .game-btn.is-start .game-btn-label {
+    width: 100%;
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .game-btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .game-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  .game-btn:focus-visible {
+    outline: 2px solid var(--color-ember);
+    outline-offset: 2px;
+  }
+
+  .game-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    flex: none;
+  }
+
+  .war-panel,
+  .war-frame {
+    position: relative;
+    z-index: 0;
+    border: 1px solid var(--color-line);
+    background: var(--color-panel);
+    border-radius: var(--radius-card);
+  }
+
+  .war-panel {
+    padding: 1rem;
+  }
+
+  .war-frame {
+    padding: 0.65rem;
+    border-radius: 0.9rem;
+  }
+
+  .war-panel > *,
+  .war-frame > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .war-frame.is-on {
+    border-color: var(--color-ember);
+    box-shadow: inset 0 0 0 1px var(--color-ember);
+  }
+
+  .power-track {
+    height: 0.4rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-line);
+  }
+
+  .power-fill {
+    height: 100%;
+    border-radius: inherit;
+  }
+
+  .ui-title {
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+
+  .hud-chip {
+    display: inline-block;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--color-parchment) 82%, transparent);
+    padding: 0.35rem 0.9rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--color-fg);
+  }
+
+  @keyframes menu-rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-btn,
+    .menu-enter {
+      animation: none;
+      transition: none;
+    }
+
+    .game-btn:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}
