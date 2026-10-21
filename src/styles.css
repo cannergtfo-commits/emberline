@@ -46,7 +46,6 @@
   .war-room {
     background: var(--color-parchment);
     color: var(--color-fg);
-    overflow-x: clip;
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
@@ -162,6 +161,8 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
+    touch-action: pan-x;
+    -webkit-overflow-scrolling: touch;
   }
 
   .h-scroll::-webkit-scrollbar {

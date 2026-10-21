@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BookOpen, Volume2, VolumeX } from "lucide-react";
 import {
   COMMANDERS,
@@ -104,7 +104,7 @@ export function GameApp() {
     <div
       className={cn(
         "war-room text-fg",
-        phase === "play" ? "h-dvh overflow-hidden" : "min-h-dvh",
+        phase === "play" ? "h-dvh overflow-hidden" : "h-dvh overflow-y-auto",
       )}
       onPointerDown={() => unlockAudio()}
     >
@@ -182,12 +182,67 @@ function Title({ onManual }: { onManual: () => void }) {
           Download the Android app
         </a>
       </div>
-      <div className="grid w-full grid-cols-3 gap-2 lg:grid-cols-2 lg:gap-3">
+      <HScroll className="snap-x snap-mandatory gap-2 pb-1 lg:grid lg:grid-cols-2 lg:gap-3 lg:overflow-visible">
         {COMMANDER_IDS.map((id) => (
-          <Portrait key={id} id={id} />
+          <div key={id} className="w-[7.5rem] shrink-0 snap-start sm:w-36 lg:w-auto">
+            <Portrait id={id} />
+          </div>
         ))}
-      </div>
+      </HScroll>
     </main>
+  );
+}
+
+function HScroll({ className, children }: { className?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let pointerId = -1;
+    let startX = 0;
+    let startLeft = 0;
+    let moved = false;
+    const down = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      pointerId = e.pointerId;
+      startX = e.clientX;
+      startLeft = el.scrollLeft;
+      moved = false;
+    };
+    const move = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      if (el.scrollWidth <= el.clientWidth + 4) return;
+      const dx = e.clientX - startX;
+      if (!moved && Math.abs(dx) < 8) return;
+      moved = true;
+      el.scrollLeft = startLeft - dx;
+    };
+    const up = (e: PointerEvent) => {
+      if (e.pointerId !== pointerId) return;
+      pointerId = -1;
+      if (!moved) return;
+      const block = (ev: Event) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        el.removeEventListener("click", block, true);
+      };
+      el.addEventListener("click", block, true);
+    };
+    el.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      el.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, []);
+  return (
+    <div ref={ref} className={cn("h-scroll", className)}>
+      {children}
+    </div>
   );
 }
 
@@ -237,7 +292,7 @@ function Setup({ onManual }: { onManual: () => void }) {
           Back
         </Btn>
       </div>
-      <div className="h-scroll snap-x snap-mandatory gap-3 pb-1 lg:grid lg:grid-cols-2 lg:overflow-visible xl:grid-cols-3">
+      <HScroll className="snap-x snap-mandatory gap-3 pb-1 lg:grid lg:grid-cols-2 lg:overflow-visible xl:grid-cols-3">
         {maps.map((map) => (
           <button
             key={map.id}
@@ -255,7 +310,7 @@ function Setup({ onManual }: { onManual: () => void }) {
             <p className="mt-1 text-sm leading-relaxed text-muted">{map.blurb}</p>
           </button>
         ))}
-      </div>
+      </HScroll>
       <div className={cn("grid min-w-0 gap-6", seats > 2 ? "lg:grid-cols-2" : "md:grid-cols-2")}>
         {picks.map(([key, value, seat], index) => (
           <CommanderPick
@@ -323,9 +378,9 @@ function CommanderPick({
   onChange: (id: CommanderId) => void;
 }) {
   return (
-    <section>
+    <section className="min-w-0">
       <h2 className={cn("mb-3 text-lg font-semibold tracking-tight", tone)}>{label}</h2>
-      <div className="h-scroll gap-2 pb-1 lg:hidden">
+      <HScroll className="snap-x snap-mandatory gap-2 pb-1 lg:hidden">
         {COMMANDER_IDS.map((id) => {
           const c = COMMANDERS[id];
           const on = value === id;
@@ -335,7 +390,7 @@ function CommanderPick({
               type="button"
               aria-pressed={on}
               onClick={() => onChange(id)}
-              className={cn("war-frame w-28 shrink-0 text-left", on && "is-on")}
+              className={cn("war-frame w-[7.5rem] shrink-0 snap-start text-left sm:w-36", on && "is-on")}
             >
               <img src={CO_SRC[id]} alt="" className="h-24 w-full rounded-lg object-cover" />
               <span className="mt-2 block text-sm font-semibold leading-tight">{c.name}</span>
@@ -343,7 +398,7 @@ function CommanderPick({
             </button>
           );
         })}
-      </div>
+      </HScroll>
       <p className="mt-2 text-sm leading-snug text-muted lg:hidden">{COMMANDERS[value].blurb}</p>
       <div className="hidden gap-2 lg:grid">
         {COMMANDER_IDS.map((id) => {
