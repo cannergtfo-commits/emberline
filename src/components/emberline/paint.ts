@@ -271,9 +271,14 @@ export function paint(args: PaintArgs) {
   }
 
   const moving = new Map<string, Point>();
+  const facing = new Map<string, number>();
   for (const f of fx) {
     if (f.kind === "move" && f.unitId && f.path && now < f.t0 + f.dur) {
-      moving.set(f.unitId, smooth(f.path, (now - f.t0) / f.dur));
+      const t = (now - f.t0) / f.dur;
+      moving.set(f.unitId, smooth(f.path, t));
+      const ahead = smooth(f.path, Math.min(1, t + 0.08));
+      const behind = smooth(f.path, Math.max(0, t - 0.02));
+      facing.set(f.unitId, ahead.x - behind.x);
     }
   }
 
@@ -291,6 +296,7 @@ export function paint(args: PaintArgs) {
     ox: number,
     oy: number,
     level: number,
+    flip: boolean,
   ) => {
     const cx = gx * TILE + TILE / 2 + ox;
     const cy = gy * TILE + TILE / 2 + oy;
@@ -306,7 +312,14 @@ export function paint(args: PaintArgs) {
     const sprite = frames[Math.min(frame, Math.max(0, frames.length - 1))] ?? frames[0];
     if (sprite) {
       const s = TILE * 0.96;
+      ctx.save();
+      if (flip) {
+        ctx.translate(cx, 0);
+        ctx.scale(-1, 1);
+        ctx.translate(-cx, 0);
+      }
       ctx.drawImage(sprite, cx - s / 2, cy - s * 0.62, s, s);
+      ctx.restore();
     } else {
       ctx.fillStyle = tone(player);
       ctx.fillRect(cx - 10, cy - 14, 20, 20);
@@ -348,9 +361,14 @@ export function paint(args: PaintArgs) {
     const pos = moving.get(u.id);
     const strike = fx.find((f) => f.kind === "strike" && f.unitId === u.id && now >= f.t0 && now < f.t0 + f.dur);
     const frames = unitFrames(art, world.commanders[u.player - 1], u.kind);
+    const posed = (order: number[]) => {
+      const got = order.filter((i) => frames[i]);
+      return got.length >= 2 ? got : [0].filter((i) => frames[i]);
+    };
+    const air = u.kind === "kite" || u.kind === "wasp" || u.kind === "dart";
     let frame = 0;
     let ox = 0;
-    let oy = Math.sin(now / 460 + u.x * 2.1) * 1.2;
+    let oy = Math.sin(now / 460 + u.x * 2.1) * (air ? 2.2 : 1.2);
     if (strike && strike.x !== undefined && strike.y !== undefined) {
       const p = (now - strike.t0) / strike.dur;
       frame = p < 0.46 ? 2 : 3;
@@ -361,10 +379,13 @@ export function paint(args: PaintArgs) {
       ox = (dx / len) * lunge;
       oy = (dy / len) * lunge;
     } else if (pos) {
-      const march = [0, 4, 5].filter((i) => frames[i]);
-      const steps = march.length >= 3 ? march : [0, 1].filter((i) => frames[i]);
-      frame = steps[Math.floor(now / 110) % Math.max(1, steps.length)] ?? 0;
-      oy = Math.sin(now / 90) * 1.5;
+      const steps = posed([4, 8, 5, 9, 1, 10, 11]);
+      frame = steps[Math.floor(now / (air ? 70 : 95)) % Math.max(1, steps.length)] ?? 0;
+      oy = Math.sin(now / (air ? 70 : 95)) * (air ? 3.2 : 2.4);
+    } else {
+      const idle = posed([0, 6, 0, 7]);
+      const tick = Math.floor(now / (air ? 280 : 480) + u.x * 1.7 + u.y);
+      frame = idle[tick % Math.max(1, idle.length)] ?? 0;
     }
     drawUnit(
       u.kind,
@@ -380,6 +401,7 @@ export function paint(args: PaintArgs) {
       ox,
       oy,
       u.level || 1,
+      (facing.get(u.id) ?? 0) < -0.04,
     );
     if (strike && art?.hit.length && strike.x !== undefined && strike.y !== undefined) {
       const p = (now - strike.t0) / strike.dur;

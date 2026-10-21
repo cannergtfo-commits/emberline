@@ -33,6 +33,8 @@ const hitUrls = import.meta.glob("../../assets/emberline/fx/hit*.png", {
   import: "default",
 }) as Record<string, string>;
 
+type Sprite = CanvasImageSource;
+
 export interface ArtPack {
   grass?: HTMLImageElement;
   woods?: HTMLImageElement;
@@ -40,7 +42,7 @@ export interface ArtPack {
   dirt?: HTMLImageElement;
   water?: HTMLImageElement;
   sand?: HTMLImageElement;
-  units: Partial<Record<CommanderId, Partial<Record<UnitKind, HTMLImageElement[]>>>>;
+  units: Partial<Record<CommanderId, Partial<Record<UnitKind, (Sprite | undefined)[]>>>>;
   props: Partial<Record<string, Partial<Record<PropKind, HTMLImageElement>>>>;
   hit: HTMLImageElement[];
 }
@@ -52,6 +54,123 @@ function loadImage(src: string): Promise<HTMLImageElement | undefined> {
     img.onerror = () => resolve(undefined);
     img.src = src;
   });
+}
+
+function ankleOf(img: HTMLImageElement): number {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const fallback = Math.round(h * 0.72);
+  if (!w || !h) return fallback;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return fallback;
+  ctx.drawImage(img, 0, 0);
+  const { data } = ctx.getImageData(0, 0, w, h);
+  const widths = new Array<number>(h).fill(0);
+  let y0 = -1;
+  let y1 = -1;
+  for (let y = 0; y < h; y++) {
+    let min = w;
+    let max = -1;
+    for (let x = 0; x < w; x++) {
+      if (data[(y * w + x) * 4 + 3] > 24) {
+        if (x < min) min = x;
+        if (x > max) max = x;
+      }
+    }
+    if (max >= 0) {
+      widths[y] = max - min + 1;
+      if (y0 < 0) y0 = y;
+      y1 = y;
+    }
+  }
+  if (y0 < 0 || y1 - y0 < 40) return fallback;
+  const span = y1 - y0;
+  const bandA = y0 + Math.floor(span * 0.58);
+  const bandB = y0 + Math.floor(span * 0.84);
+  let ankle = bandA;
+  let narrow = Number.POSITIVE_INFINITY;
+  for (let y = bandA; y < bandB; y++) {
+    const width = widths[y] || 9999;
+    if (width < narrow) {
+      narrow = width;
+      ankle = y;
+    }
+  }
+  return ankle;
+}
+
+function poseGround(img: HTMLImageElement, ankle: number, dx: number, dy: number, rot: number, sy: number) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const nh = Math.max(1, Math.round(ankle * sy));
+  const pad = 48;
+  const fig = document.createElement("canvas");
+  fig.width = w + pad * 2;
+  fig.height = nh + pad * 2;
+  const fctx = fig.getContext("2d");
+  if (!fctx) return img;
+  fctx.imageSmoothingEnabled = true;
+  fctx.translate(pad + w / 2, pad + nh);
+  fctx.rotate((rot * Math.PI) / 180);
+  fctx.drawImage(img, 0, 0, w, ankle, -w / 2, -nh, w, nh);
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+  const octx = out.getContext("2d");
+  if (!octx) return img;
+  octx.imageSmoothingEnabled = true;
+  octx.drawImage(fig, dx - pad, Math.round(ankle + dy - nh) - pad);
+  octx.drawImage(img, 0, ankle, w, h - ankle, 0, ankle, w, h - ankle);
+  return out;
+}
+
+function poseAir(img: HTMLImageElement, dx: number, dy: number, rot: number, sy: number) {
+  const w = img.naturalWidth || img.width;
+  const h = img.naturalHeight || img.height;
+  const nh = Math.max(1, Math.round(h * sy));
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = h;
+  const ctx = out.getContext("2d");
+  if (!ctx) return img;
+  ctx.imageSmoothingEnabled = true;
+  ctx.translate(w / 2 + dx, h / 2 + dy);
+  ctx.rotate((rot * Math.PI) / 180);
+  ctx.drawImage(img, -w / 2, -nh / 2, w, nh);
+  return out;
+}
+
+function enliven(pack: ArtPack) {
+  for (const faction of FACTIONS) {
+    const kinds = pack.units[faction];
+    if (!kinds) continue;
+    for (const kind of UNIT_KINDS) {
+      const row = kinds[kind];
+      const still = row?.[0];
+      if (!row || !(still instanceof HTMLImageElement)) continue;
+      const air = kind === "kite" || kind === "wasp" || kind === "dart";
+      const take = (index: number) => (row[index] instanceof HTMLImageElement ? row[index] : still);
+      if (air) {
+        row[6] = poseAir(still, 0, -18, -10, 1);
+        row[7] = poseAir(still, 0, 12, 9, 1);
+        row[8] = poseAir(take(4), 0, -22, -16, 1.04);
+        row[9] = poseAir(take(5), 8, -8, 14, 1);
+        row[10] = poseAir(take(1), -6, -12, -13, 1.05);
+        row[11] = poseAir(take(4), 6, 10, 12, 0.96);
+      } else {
+        const ankle = ankleOf(still);
+        row[6] = poseGround(still, ankle, 0, -14, -5, 1.08);
+        row[7] = poseGround(still, ankle, 10, 4, 6.5, 0.96);
+        row[8] = poseGround(take(4), ankle, 0, -22, -8, 1.05);
+        row[9] = poseGround(take(5), ankle, -8, -6, 6, 1);
+        row[10] = poseGround(take(1), ankle, 6, -16, -6, 1.03);
+        row[11] = poseGround(take(4), ankle, -6, -8, 8, 0.98);
+      }
+    }
+  }
 }
 
 let packPromise: Promise<void> | null = null;
@@ -127,6 +246,8 @@ export function loadArt(): Promise<ArtPack> {
       await Promise.all(soon);
       publish(pack);
       void Promise.all(later).then(async () => {
+        enliven(pack);
+        publish(pack);
         const hitPairs = Object.entries(hitUrls).sort(([a], [b]) => a.localeCompare(b));
         const hits = await Promise.all(hitPairs.map(([, url]) => loadImage(url)));
         for (const img of hits) if (img) current.hit.push(img);
@@ -149,7 +270,7 @@ export function useArt(): ArtPack | null {
   return art;
 }
 
-export function unitFrames(art: ArtPack | null, faction: CommanderId, kind: UnitKind): (HTMLImageElement | undefined)[] {
+export function unitFrames(art: ArtPack | null, faction: CommanderId, kind: UnitKind): (Sprite | undefined)[] {
   return art?.units[faction]?.[kind] ?? [];
 }
 
