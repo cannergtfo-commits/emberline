@@ -177,7 +177,7 @@ function Title({ onManual }: { onManual: () => void }) {
         </button>
         <a
           className="menu-lead mt-1 inline-flex min-h-11 items-center text-sm font-semibold underline decoration-white/30 underline-offset-4"
-          href="https://github.com/cannergtfo-commits/emberline/releases/latest"
+          href="https://blazarforce.net/blazar-apps.html"
         >
           Download the Android app
         </a>

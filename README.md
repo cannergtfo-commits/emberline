@@ -13,7 +13,7 @@ Gameplay, units, and maps are the same on both branches.
 
 ## Android
 
-The mobile build can be wrapped as an installable Android package. Download the latest APK from the GitHub Releases page.
+The mobile build is on [Blazar Apps](https://blazarforce.net/blazar-apps.html) as Emberline 1.0. Android asks before the install.
 
 ## Branches
 
