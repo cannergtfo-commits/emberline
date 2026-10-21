@@ -8,7 +8,10 @@ import {
   TERRAIN_NAME,
   UNIT_KINDS,
   UNITS,
+  captainCost,
+  captainMods,
   unitTitle,
+  xpToNext,
   type CommanderId,
   type PlayerId,
   type UnitKind,
@@ -16,10 +19,12 @@ import {
 import { MAPS, type BuiltMap } from "@/game/maps";
 import {
   allied,
+  canRecall,
   commanderOf,
   createMatch,
   getHints,
   incomeOf,
+  moveStat,
   propertyCount,
   unitAt,
   unitById,
@@ -122,12 +127,13 @@ function Title({ onManual }: { onManual: () => void }) {
   const patchSetup = useGame((s) => s.patchSetup);
   const resume = useGame((s) => s.resume);
   return (
-    <main className="menu-enter mx-auto flex min-h-dvh w-full min-w-0 max-w-5xl flex-col items-center gap-6 px-[max(1.25rem,env(safe-area-inset-left))] py-6 pt-[max(1.25rem,env(safe-area-inset-top))] pr-[max(1.25rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:grid lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:px-8">
+    <main className="menu-hero menu-enter mx-auto flex min-h-dvh w-full min-w-0 max-w-5xl flex-col items-center gap-6 px-[max(1.25rem,env(safe-area-inset-left))] py-6 pt-[max(1.25rem,env(safe-area-inset-top))] pr-[max(1.25rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:grid lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10 lg:px-8">
       <div className="w-full max-w-md lg:max-w-none">
-        <p className="text-xs font-semibold tracking-wide text-ember uppercase">Hotseat tactics</p>
-        <h1 className="ui-title mt-2 text-5xl text-fg md:text-6xl">Emberline</h1>
-        <p className="mt-3 max-w-md text-base leading-relaxed text-fg-soft">
-          Nordmark, the Vael Synod, Heartland, and Mawbrood. Two to four players on one device.
+        <img src="/emberline-icon.png" alt="" className="size-16 rounded-2xl shadow-lg" />
+        <p className="menu-kicker mt-4">Fun hot-seat multiplayer</p>
+        <h1 className="ui-title menu-title mt-2 text-5xl md:text-6xl">Emberline</h1>
+        <p className="menu-lead mt-3 max-w-md text-base leading-relaxed">
+          Pass one phone or tablet around the table. Two to four players, five banners, no accounts and no waiting on anyone online.
         </p>
         <div className="mt-6 grid w-full gap-2.5">
           <Btn
@@ -165,16 +171,21 @@ function Title({ onManual }: { onManual: () => void }) {
             </Btn>
           ) : null}
         </div>
-        <button type="button" className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-fg-soft" onClick={onManual}>
+        <button type="button" className="menu-lead mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold" onClick={onManual}>
           <BookOpen className="size-4" aria-hidden />
           Rules
         </button>
+        <a
+          className="menu-lead mt-1 inline-flex min-h-11 items-center text-sm font-semibold underline decoration-white/30 underline-offset-4"
+          href="https://github.com/cannergtfo-commits/emberline/releases/latest"
+        >
+          Download the Android app
+        </a>
       </div>
-      <div className="grid w-full grid-cols-4 gap-2 lg:grid-cols-2 lg:gap-3">
-        <Portrait id="nord" />
-        <Portrait id="vael" />
-        <Portrait id="heart" />
-        <Portrait id="maw" />
+      <div className="grid w-full grid-cols-3 gap-2 lg:grid-cols-2 lg:gap-3">
+        {COMMANDER_IDS.map((id) => (
+          <Portrait key={id} id={id} />
+        ))}
       </div>
     </main>
   );
@@ -389,7 +400,7 @@ function Preview({ id }: { id: string }) {
         y: (viewH - world.height * TILE * scale) / 2,
       },
       art,
-      hints: { moves: [], attacks: [], drops: [], canCapture: false, canSupply: false, board: null, canWait: false },
+      hints: { moves: [], attacks: [], drops: [], canCapture: false, canSupply: false, board: null, canWait: false, canHeal: false },
       pending: null,
       selectedId: null,
       cursor: null,
@@ -537,6 +548,8 @@ function OrderRail({
   const doCapture = useGame((s) => s.doCapture);
   const doSupply = useGame((s) => s.doSupply);
   const doAttack = useGame((s) => s.doAttack);
+  const doHeal = useGame((s) => s.doHeal);
+  const doRecall = useGame((s) => s.doRecall);
   const doDrop = useGame((s) => s.doDrop);
   const doBuild = useGame((s) => s.doBuild);
   const openBuild = useGame((s) => s.openBuild);
@@ -612,6 +625,16 @@ function OrderRail({
           <Icon name="supply" /> Supply
         </Btn>
       ) : null}
+      {pending && hints?.canHeal ? (
+        <Btn tone="gale" className="shrink-0" onClick={() => doHeal()}>
+          Heal
+        </Btn>
+      ) : null}
+      {!pending && canRecall(world) ? (
+        <Btn className="shrink-0" onClick={() => doRecall()}>
+          Recall {coins(captainCost(world.captainLevel[world.turn - 1] ?? 1))}
+        </Btn>
+      ) : null}
       {pending
         ? hints?.attacks.map((a) => (
             <Btn key={a.unitId} tone="line" className="shrink-0" onClick={() => doAttack(a.unitId)}>
@@ -682,6 +705,8 @@ function Orders({
   const doCapture = useGame((s) => s.doCapture);
   const doSupply = useGame((s) => s.doSupply);
   const doAttack = useGame((s) => s.doAttack);
+  const doHeal = useGame((s) => s.doHeal);
+  const doRecall = useGame((s) => s.doRecall);
   const doDrop = useGame((s) => s.doDrop);
   const doBuild = useGame((s) => s.doBuild);
   const openBuild = useGame((s) => s.openBuild);
@@ -742,10 +767,18 @@ function Orders({
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">{UNITS[selected.kind].name}</p>
           <p className="text-sm text-muted">{UNITS[selected.kind].blurb}</p>
           <p className="mt-2 text-sm tabular-nums">
-            HP {Math.ceil(selected.hp / 10)}/10 · Move {UNITS[selected.kind].move}
+            HP {Math.ceil(selected.hp / 10)}/10 · Move {moveStat(world, selected)}
             {UNITS[selected.kind].ammo < 0 ? " · Ammo ∞" : ` · Ammo ${selected.ammo}`}
             {UNITS[selected.kind].daily > 0 ? ` · Fuel ${selected.fuel}` : ""}
           </p>
+          {selected.kind === "captain" ? (
+            <p className="text-sm text-fg-soft">
+              Rank {selected.level}/6
+              {selected.level < 6 ? ` · ${selected.xp}/${xpToNext(selected.level)} xp` : " · rank capped"}
+              {` · mend ${Math.ceil(captainMods(selected.level).heal / 10)}`}
+              {` · strike ${Math.round(captainMods(selected.level).atk * 100)}%`}
+            </p>
+          ) : null}
           {selected.player !== world.turn ? (
             <p className="mt-2 text-sm">
               {allied(world, selected.player, world.turn)
@@ -781,6 +814,11 @@ function Orders({
                   <Icon name="supply" /> Resupply neighbors
                 </Btn>
               ) : null}
+              {hints.canHeal ? (
+                <Btn tone="gale" className="min-h-14 w-full text-base" onClick={() => doHeal()}>
+                  Heal the line
+                </Btn>
+              ) : null}
               {hints.attacks.map((a) => (
                 <Btn key={a.unitId} tone="line" className="min-h-14 w-full text-base" align="start" onClick={() => doAttack(a.unitId)}>
                   <Icon name="strike" />
@@ -812,6 +850,12 @@ function Orders({
       ) : (
         <p className="text-sm text-fg-soft">Tap a unit, or a works to build. Drag to pan. Pinch to zoom.</p>
       )}
+
+      {!pending && canRecall(world) ? (
+        <Btn className="min-h-14 w-full text-base" onClick={() => doRecall()}>
+          Recall captain · {coins(captainCost(world.captainLevel[world.turn - 1] ?? 1))}
+        </Btn>
+      ) : null}
 
       {buildAt && building ? (
         <section className="war-panel">
@@ -963,12 +1007,12 @@ function Manual({ onClose }: { onClose: () => void }) {
         <div className="manual-copy mt-4 space-y-4 text-sm leading-relaxed text-fg-soft">
           <p>Pass the device at the end of each day. The map hides between turns.</p>
           <p>Every town, works, airfield, and keep you hold pays 1,000 at dawn. Repairs on your own ground cost a little of that.</p>
-          <p>Huscarls, riflemen, starblades, and gnashes seize property, and so do their heavy cousins. A healthy soldier takes most holdings in two days. Taking a keep knocks that army out. In a two-banner battle, that wins.</p>
+          <p>Huscarls, riflemen, starblades, gnashes, and cherubs seize property, and so do their heavy cousins. A healthy soldier takes most holdings in two days. Taking a keep knocks that army out. In a two-banner battle, that wins.</p>
           <p>Three or four banners can share a larger map. The last seat standing wins, and a fallen army leaves its other holdings abandoned. In a paired battle, Ember stands with Flint and Gale with Tide. You share sight, not funds, and you cannot strike or seize an ally.</p>
           <p>Move, then strike, or strike where you stand. Blue ground is a march, red ground is a shot. The forecast is the spread before luck. Indirect guns cannot fire after moving unless Gore Rain is active, and they only shoot targets someone on your side can see.</p>
           <p>Works build ground units. Airfields build aircraft. The building has to be empty. New units may act the day they arrive.</p>
           <p>Aircraft burn fuel every dawn and fall if they run dry. Parking on your airfield refuels them. Haulers and kites carry one soldier and can resupply neighbors.</p>
-          <p>Powers charge as damage is dealt and taken. They last until you end the day.</p>
+          <p>Powers charge as damage is dealt and taken. They last until you end the day. Ascendant Hymn lifts infantry and aircraft one tile farther and makes them hit harder. Each banner's captain grows to rank 6 by defeating enemies. Heal spends their action to mend themselves and anyone beside them. Calling a fallen captain back costs 5,000, plus 1,000 for each rank, up to 10,000.</p>
           <p>Mountains block every unit, including aircraft. Forests can be marched — wheels and treads are slower there — and under fog they hide units until a friend stands beside them.</p>
           <p>You win by taking the enemy keep, or if the other army cannot field a unit. Days do not run out. Undo rewinds your last order this day. On a phone or tablet, tap a unit, then tap a blue tile to move or a red tile to aim. Drag to pan and pinch to zoom. Wait, Seize, Strike, and Build sit on the bar at the bottom. Details opens the log and resign. On a keyboard, arrows move the cursor, Enter confirms, and E ends the day.</p>
           <p>Music changes with the screen and the map, and it quiets while you pass the device. Mute silences the music and the cues together.</p>

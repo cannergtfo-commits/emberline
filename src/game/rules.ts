@@ -9,10 +9,16 @@ import {
   UNITS,
   baseDamage,
   canCarry,
+  captainCost,
+  captainMods,
+  captainRank,
   isAirClass,
   isIndirect,
   isPassenger,
   isProperty,
+  killXp,
+  unitTitle,
+  xpToNext,
   type CommanderId,
   type PlayerId,
   type Terrain,
@@ -33,6 +39,8 @@ export interface Unit {
   done: boolean;
   loaded: boolean;
   cargo: string | null;
+  level: number;
+  xp: number;
 }
 
 export interface World {
@@ -58,6 +66,8 @@ export interface World {
   winReason: string;
   losses: number[];
   eliminated: boolean[];
+  captainLevel: number[];
+  captainXp: number[];
   log: string[];
   nextId: number;
 }
@@ -90,6 +100,7 @@ export interface Hints {
   canSupply: boolean;
   board: { id: string; name: string } | null;
   canWait: boolean;
+  canHeal: boolean;
 }
 
 const DIRS: Point[] = [
@@ -156,10 +167,17 @@ export function powered(w: World, p: PlayerId): boolean {
 export function moveStat(w: World, unit: Unit): number {
   const def = UNITS[unit.kind];
   let m = def.move;
+  if (unit.kind === "captain") m += captainMods(unit.level).move;
   if (!powered(w, unit.player)) return m;
   const c = commanderOf(w, unit.player);
   if (c === "nord" && (def.moveClass === "tires" || def.moveClass === "treads")) m += 1;
   if (c === "heart" && (def.moveClass === "foot" || def.moveClass === "boot")) m += 1;
+  if (
+    c === "aure" &&
+    (def.moveClass === "foot" || def.moveClass === "boot" || def.moveClass === "air" || def.moveClass === "copter")
+  ) {
+    m += 1;
+  }
   return m;
 }
 
@@ -171,12 +189,32 @@ export function attackMul(w: World, unit: Unit): number {
   if (c === "heart" && (cls === "foot" || cls === "boot")) return 1.15;
   if (c === "vael") return 1.12;
   if (
+    c === "aure" &&
+    (cls === "foot" || cls === "boot" || cls === "air" || cls === "copter")
+  ) {
+    return 1.22;
+  }
+  if (
     c === "maw" &&
     (isIndirect(unit.kind) || cls === "air" || cls === "copter")
   ) {
     return 1.35;
   }
   return 1;
+}
+
+function strikeMul(w: World, unit: Unit): number {
+  const base = attackMul(w, unit);
+  return unit.kind === "captain" ? base * captainMods(unit.level).atk : base;
+}
+
+function soak(unit: Unit, dmg: number): number {
+  if (unit.kind !== "captain") return dmg;
+  return Math.max(0, Math.floor(dmg * captainMods(unit.level).def));
+}
+
+export function visionStat(unit: Unit): number {
+  return UNITS[unit.kind].vision + (unit.kind === "captain" ? captainMods(unit.level).vision : 0);
 }
 
 export function canStrikeAfterMove(w: World, unit: Unit): boolean {
@@ -218,7 +256,7 @@ export function visionMap(w: World, player: PlayerId): boolean[][] {
   const vis = Array.from({ length: w.height }, () => Array(w.width).fill(false));
   for (const u of w.units) {
     if (!allied(w, u.player, player) || u.loaded || u.hp <= 0) continue;
-    const r = UNITS[u.kind].vision;
+    const r = visionStat(u);
     for (let y = 0; y < w.height; y++) {
       for (let x = 0; x < w.width; x++) {
         if (manhattan(u, { x, y }) <= r) vis[y][x] = true;
@@ -338,20 +376,20 @@ export function attacksFrom(
     const base = baseDamage(unit.kind, foe.kind);
     if (base <= 0) continue;
     const stars = defenseStars(w, foe, w.terrain[foe.y][foe.x]);
-    const mul = attackMul(w, unit);
-    const dmgMin = strikeDamage(base, unit.hp, foe.hp, stars, mul, 0);
-    const dmgMax = strikeDamage(base, unit.hp, foe.hp, stars, mul, 9);
+    const mul = strikeMul(w, unit);
+    const dmgMin = soak(foe, strikeDamage(base, unit.hp, foe.hp, stars, mul, 0));
+    const dmgMax = soak(foe, strikeDamage(base, unit.hp, foe.hp, stars, mul, 9));
     let counterMin = 0;
     let counterMax = 0;
     const remain = Math.max(0, foe.hp - dmgMin);
     if (remain > 0 && canCounter(w, foe, { ...unit, x, y })) {
       const back = baseDamage(foe.kind, unit.kind);
       const astars = defenseStars(w, unit, w.terrain[y][x]);
-      const bmul = attackMul(w, foe);
-      counterMin = strikeDamage(back, remain, unit.hp, astars, bmul, 0);
+      const bmul = strikeMul(w, foe);
+      counterMin = soak(unit, strikeDamage(back, remain, unit.hp, astars, bmul, 0));
       const remainMax = Math.max(0, foe.hp - dmgMax);
       counterMax =
-        remainMax > 0 ? strikeDamage(back, foe.hp, unit.hp, astars, bmul, 9) : counterMin;
+        remainMax > 0 ? soak(unit, strikeDamage(back, foe.hp, unit.hp, astars, bmul, 9)) : counterMin;
     }
     previews.push({
       unitId: foe.id,
@@ -402,6 +440,7 @@ export function getHints(w: World, unitId: string | null, pending: MoveOrder | n
     canSupply: false,
     board: null,
     canWait: false,
+    canHeal: false,
   };
   if (!unitId || w.over) return empty;
   const unit = unitById(w, unitId);
@@ -422,6 +461,7 @@ export function getHints(w: World, unitId: string | null, pending: MoveOrder | n
     canSupply: canCarry(unit.kind) && adjacentFriend(w, unit, pos.x, pos.y),
     board: here ? { id: here.id, name: UNITS[here.kind].name } : null,
     canWait: !boarding,
+    canHeal: !boarding && unit.kind === "captain" && needsMending(w, unit, pos.x, pos.y),
   };
 }
 
@@ -458,6 +498,7 @@ function releaseCapture(w: World, unitId: string, keep?: Point) {
 function destroyUnit(w: World, id: string) {
   const u = unitById(w, id);
   if (!u) return;
+  rememberCaptain(w, u);
   if (u.cargo) destroyUnit(w, u.cargo);
   for (const t of w.units) if (t.cargo === id) t.cargo = null;
   releaseCapture(w, id);
@@ -487,7 +528,7 @@ function applyHit(
 ): { dealt: number; killed: boolean } {
   const base = baseDamage(attacker.kind, defender.kind);
   const stars = defenseStars(w, defender, w.terrain[defender.y][defender.x]);
-  const dmg = strikeDamage(base, attacker.hp, defender.hp, stars, attackMul(w, attacker), luck);
+  const dmg = soak(defender, strikeDamage(base, attacker.hp, defender.hp, stars, strikeMul(w, attacker), luck));
   const dealt = Math.min(defender.hp, dmg);
   defender.hp -= dealt;
   if (attacker.ammo > 0) attacker.ammo -= 1;
@@ -626,6 +667,9 @@ function canFight(w: World, p: PlayerId): boolean {
       const t = w.terrain[y][x];
       if (t === "factory" && w.funds[p - 1] >= 1000) return true;
       if (t === "airport" && w.funds[p - 1] >= 5000) return true;
+      if ((t === "factory" || t === "hq") && w.funds[p - 1] >= captainCost(w.captainLevel?.[p - 1] ?? 1)) {
+        if (!w.units.some((u) => u.player === p && u.kind === "captain" && u.hp > 0)) return true;
+      }
     }
   }
   return false;
@@ -678,6 +722,163 @@ function morning(w: World) {
   }
 }
 
+function blankUnit(
+  w: World,
+  kind: UnitKind,
+  player: PlayerId,
+  x: number,
+  y: number,
+  level = 1,
+  xp = 0,
+): Unit {
+  const def = UNITS[kind];
+  return {
+    id: `u${w.nextId++}`,
+    kind,
+    player,
+    x,
+    y,
+    hp: 100,
+    ammo: def.ammo,
+    fuel: def.fuel,
+    moved: false,
+    done: false,
+    loaded: false,
+    cargo: null,
+    level,
+    xp,
+  };
+}
+
+function rememberCaptain(w: World, unit: Unit) {
+  if (unit.kind !== "captain") return;
+  w.captainLevel[unit.player - 1] = captainRank(unit.level);
+  w.captainXp[unit.player - 1] = Math.max(0, unit.xp || 0);
+}
+
+function grantXp(w: World, killer: Unit, victim: UnitKind) {
+  if (killer.kind !== "captain" || killer.hp <= 0) return;
+  killer.level = captainRank(killer.level);
+  if (killer.level >= 6) {
+    killer.xp = 0;
+    rememberCaptain(w, killer);
+    return;
+  }
+  killer.xp = (killer.xp || 0) + killXp(victim);
+  let rose = false;
+  while (killer.level < 6 && killer.xp >= xpToNext(killer.level)) {
+    killer.xp -= xpToNext(killer.level);
+    killer.level += 1;
+    rose = true;
+  }
+  if (killer.level >= 6) killer.xp = 0;
+  rememberCaptain(w, killer);
+  if (rose) note(w, `${unitTitle(commanderOf(w, killer.player), "captain")} reaches rank ${killer.level}.`);
+}
+
+function spawnSpot(w: World, keep: Point): Point | null {
+  if (!unitAt(w, keep.x, keep.y)) return { ...keep };
+  const queue: Point[] = [{ ...keep }];
+  const seen = new Set<number>([keep.y * 100 + keep.x]);
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const d of DIRS) {
+      const x = cur.x + d.x;
+      const y = cur.y + d.y;
+      const key = y * 100 + x;
+      if (!inBounds(w, x, y) || seen.has(key)) continue;
+      seen.add(key);
+      if (MOVE_COST.foot[w.terrain[y][x]] >= 99) continue;
+      if (manhattan(keep, { x, y }) > 3) continue;
+      if (!unitAt(w, x, y)) return { x, y };
+      queue.push({ x, y });
+    }
+  }
+  return null;
+}
+
+function spawnCaptains(w: World) {
+  for (let i = 0; i < w.commanders.length; i++) {
+    const keep = w.homeKeep[i];
+    if (!keep) continue;
+    const spot = spawnSpot(w, keep);
+    if (!spot) continue;
+    w.units.push(blankUnit(w, "captain", (i + 1) as PlayerId, spot.x, spot.y, 1, 0));
+  }
+}
+
+function needsMending(w: World, unit: Unit, x: number, y: number): boolean {
+  if (unit.hp < 100) return true;
+  return w.units.some(
+    (o) =>
+      o.id !== unit.id &&
+      !o.loaded &&
+      o.hp < 100 &&
+      allied(w, o.player, unit.player) &&
+      manhattan(o, { x, y }) === 1,
+  );
+}
+
+export function canRecall(w: World): boolean {
+  if (w.over || w.eliminated[w.turn - 1]) return false;
+  if (w.units.some((u) => u.player === w.turn && u.kind === "captain" && u.hp > 0)) return false;
+  const level = captainRank(w.captainLevel?.[w.turn - 1] ?? 1);
+  if (w.funds[w.turn - 1] < captainCost(level)) return false;
+  return recallSpot(w) !== null;
+}
+
+export function recallSpot(w: World): Point | null {
+  const p = w.turn;
+  const keep = w.homeKeep[p - 1];
+  if (keep && w.owner[keep.y]?.[keep.x] === p && !unitAt(w, keep.x, keep.y)) return { ...keep };
+  for (let y = 0; y < w.height; y++) {
+    for (let x = 0; x < w.width; x++) {
+      if (w.owner[y][x] !== p || unitAt(w, x, y)) continue;
+      const t = w.terrain[y][x];
+      if (t === "hq" || t === "factory") return { x, y };
+    }
+  }
+  return null;
+}
+
+export function commitHeal(w: World, order: MoveOrder): World {
+  const n = cloneWorld(w);
+  const u = unitById(n, order.unitId);
+  if (!u || u.kind !== "captain" || !legalOrder(n, u, order)) return w;
+  if (!needsMending(n, u, order.x, order.y)) return w;
+  place(n, u, order);
+  const amt = captainMods(u.level).heal;
+  let count = 0;
+  const mend = (o: Unit) => {
+    const next = Math.min(100, o.hp + amt);
+    if (next <= o.hp) return;
+    o.hp = next;
+    count += 1;
+  };
+  mend(u);
+  for (const o of n.units) {
+    if (o.id === u.id || o.loaded || !allied(n, o.player, u.player)) continue;
+    if (manhattan(o, u) !== 1) continue;
+    mend(o);
+  }
+  u.done = true;
+  note(n, count ? `${unitTitle(commanderOf(n, u.player), "captain")} mends ${count}.` : `${UNITS.captain.name} holds.`);
+  return n;
+}
+
+export function commitRecall(w: World): World {
+  if (!canRecall(w)) return w;
+  const n = cloneWorld(w);
+  const spot = recallSpot(n);
+  if (!spot) return w;
+  const level = captainRank(n.captainLevel[n.turn - 1] ?? 1);
+  const xp = Math.max(0, n.captainXp[n.turn - 1] ?? 0);
+  n.funds[n.turn - 1] -= captainCost(level);
+  n.units.push(blankUnit(n, "captain", n.turn, spot.x, spot.y, level, xp));
+  note(n, `${SEAT_NAME[n.turn]} calls ${unitTitle(commanderOf(n, n.turn), "captain")} back at rank ${level}.`);
+  return n;
+}
+
 export interface MatchOpts {
   mapId: string;
   p1: CommanderId;
@@ -727,26 +928,15 @@ export function createMatch(opts: MatchOpts): World {
     winReason: "",
     losses: Array(seats).fill(0),
     eliminated: Array(seats).fill(false),
+    captainLevel: Array(seats).fill(1),
+    captainXp: Array(seats).fill(0),
     log: ["Day 1. Ember opens."],
     nextId: 1,
   };
   for (const d of map.deploy) {
-    const def = UNITS[d.kind];
-    w.units.push({
-      id: `u${w.nextId++}`,
-      kind: d.kind,
-      player: d.player,
-      x: d.x,
-      y: d.y,
-      hp: 100,
-      ammo: def.ammo,
-      fuel: def.fuel,
-      moved: false,
-      done: false,
-      loaded: false,
-      cargo: null,
-    });
+    w.units.push(blankUnit(w, d.kind, d.player, d.x, d.y));
   }
+  spawnCaptains(w);
   morning(w);
   return w;
 }
@@ -858,11 +1048,13 @@ export function commitAttack(
   place(n, u, order);
   const first = applyHit(n, u, foe, luckOf(rng));
   if (first.killed) {
+    grantXp(n, u, foe.kind);
     note(n, `${UNITS[foe.kind].name} breaks.`);
     destroyUnit(n, foe.id);
   } else if (u.hp > 0 && canCounter(n, foe, u)) {
     const back = applyHit(n, foe, u, luckOf(rng));
     if (back.killed) {
+      grantXp(n, foe, u.kind);
       note(n, `${UNITS[u.kind].name} falls to the counter.`);
       destroyUnit(n, u.id);
     }
@@ -877,20 +1069,7 @@ export function commitBuild(w: World, x: number, y: number, kind: UnitKind): Wor
   const n = cloneWorld(w);
   const def = UNITS[kind];
   n.funds[n.turn - 1] -= def.cost;
-  n.units.push({
-    id: `u${n.nextId++}`,
-    kind,
-    player: n.turn,
-    x,
-    y,
-    hp: 100,
-    ammo: def.ammo,
-    fuel: def.fuel,
-    moved: false,
-    done: false,
-    loaded: false,
-    cargo: null,
-  });
+  n.units.push(blankUnit(n, kind, n.turn, x, y));
   note(n, `${def.name} rolls out of the ${def.facility === "airport" ? "airfield" : "works"}.`);
   return n;
 }

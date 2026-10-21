@@ -9,8 +9,10 @@ import {
   commitBuild,
   commitCapture,
   commitDrop,
+  commitHeal,
   commitLoad,
   commitPower,
+  commitRecall,
   commitSupply,
   commitWait,
   createMatch,
@@ -57,6 +59,7 @@ export function runSelfCheck(): string[] {
       const k = `${u.x},${u.y}`;
       if (seen.has(k)) fail(errors, `${map.id} stack ${k}`);
       seen.add(k);
+      if (u.kind === "captain") continue;
       if (map.seats === 2 && u.player === 2) {
         const home = map.deploy.find((d) => d.player === 1 && d.kind === u.kind && map.width - 1 - d.x === u.x);
         if (!home) fail(errors, `${map.id} mirror unit ${u.kind}`);
@@ -218,6 +221,8 @@ export function runSelfCheck(): string[] {
       done: false,
       loaded: false,
       cargo: null,
+      level: 1,
+      xp: 0,
     };
     const block = unitAt(haul, carrier.x, carrier.y);
     if (block) {
@@ -237,6 +242,34 @@ export function runSelfCheck(): string[] {
     });
     const rider = unitById(loaded, infantry.id);
     if (!rider?.loaded || unitById(loaded, "haul1")?.cargo !== infantry.id) fail(errors, "load failed");
+  }
+
+  const capn = createMatch({ mapId: "ridge", p1: "nord", p2: "vael", fog: false, mode: "hotseat" });
+  const leader = capn.units.find((u) => u.player === 1 && u.kind === "captain");
+  const foeCap = capn.units.find((u) => u.player === 2 && u.kind === "captain");
+  if (!leader || !foeCap) fail(errors, "captains missing");
+  else {
+    if (leader.level !== 1 || capn.captainLevel[0] !== 1) fail(errors, "captain rank");
+    foeCap.x = leader.x + 1;
+    foeCap.y = leader.y;
+    foeCap.hp = 1;
+    const ranked = commitAttack(capn, stay(leader), foeCap.id, () => 0);
+    const grown = ranked.units.find((u) => u.id === leader.id);
+    if (!grown || grown.level < 2) fail(errors, `captain did not rank up ${grown?.level} xp ${grown?.xp}`);
+    else {
+      if (ranked.captainLevel[1] < 1) fail(errors, "fallen captain forgot rank");
+      grown.hp = 40;
+      grown.done = false;
+      const mended = commitHeal(ranked, stay(grown));
+      const afterHeal = mended.units.find((u) => u.id === grown.id);
+      if (!afterHeal || afterHeal.hp <= 40 || !afterHeal.done) fail(errors, "heal failed");
+      ranked.units = ranked.units.filter((u) => u.id !== leader.id);
+      ranked.funds[0] = 20000;
+      const back = commitRecall(ranked);
+      const returned = back.units.find((u) => u.player === 1 && u.kind === "captain");
+      if (!returned || returned.level !== grown.level) fail(errors, "recall lost rank");
+      if (back.funds[0] !== 20000 - (5000 + (grown.level - 1) * 1000)) fail(errors, `recall cost ${back.funds[0]}`);
+    }
   }
 
   const wiped = createMatch({ mapId: "ridge", p1: "nord", p2: "vael", fog: false, mode: "hotseat" });

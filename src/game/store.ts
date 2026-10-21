@@ -10,8 +10,10 @@ import {
   commitBuild,
   commitCapture,
   commitDrop,
+  commitHeal,
   commitLoad,
   commitPower,
+  commitRecall,
   commitSupply,
   commitWait,
   commanderOf,
@@ -81,6 +83,8 @@ interface Store {
   doLoad: () => void;
   doDrop: (dest: Point) => void;
   doAttack: (targetId: string) => void;
+  doHeal: () => void;
+  doRecall: () => void;
   doBuild: (kind: UnitKind) => void;
   openBuild: (p: Point) => void;
   cancelPending: () => void;
@@ -132,6 +136,13 @@ function normalizeWorld(world: World): World {
   world.powerActive = fill(world.powerActive, false);
   world.losses = fill(world.losses, 0);
   world.eliminated = fill(world.eliminated, false);
+  world.captainLevel = fill(world.captainLevel, 1);
+  world.captainXp = fill(world.captainXp, 0);
+  world.units = (world.units ?? []).map((u) => ({
+    ...u,
+    level: u.kind === "captain" ? Math.min(6, Math.max(1, u.level || 1)) : 1,
+    xp: u.xp || 0,
+  }));
   if (!Array.isArray(world.homeKeep)) world.homeKeep = [];
   if (world.mode !== "hotseat" && world.mode !== "drill" && world.mode !== "alliance") world.mode = "hotseat";
   return world;
@@ -213,6 +224,19 @@ function buildFx(before: World, after: World, order?: MoveOrder): Fx[] {
       });
     }
   }
+    for (const u of after.units) {
+      const prev = before.units.find((b) => b.id === u.id);
+      if (!prev || u.kind !== "captain" || u.level <= (prev.level || 1)) continue;
+      fx.push({
+        id: id++,
+        kind: "float",
+        x: u.x,
+        y: u.y,
+        text: `RANK ${u.level}`,
+        t0: now,
+        dur: reduce ? 1 : 900,
+      });
+    }
   if (after.turn === before.turn && after.powerActive[after.turn - 1] && !before.powerActive[before.turn - 1]) {
     fx.push({
       id: id++,
@@ -297,6 +321,8 @@ export const useGame = create<Store>((set, get) => {
       else if (cmd.type === "load") apply(w, commitLoad(w, cmd.order), cmd.order, "move");
       else if (cmd.type === "drop") apply(w, commitDrop(w, cmd.order, cmd.dest), cmd.order, "move");
       else if (cmd.type === "supply") apply(w, commitSupply(w, cmd.order), cmd.order, "tick" as "move");
+      else if (cmd.type === "heal") apply(w, commitHeal(w, cmd.order), cmd.order, "take");
+      else if (cmd.type === "recall") apply(w, commitRecall(w), undefined, "take");
       else if (cmd.type === "build") apply(w, commitBuild(w, cmd.x, cmd.y, cmd.kind), undefined, "take");
       window.setTimeout(step, 260);
     };
@@ -528,6 +554,16 @@ export const useGame = create<Store>((set, get) => {
         })();
       if (!order) return;
       apply(world, commitAttack(world, order, targetId), order, "hit");
+    },
+    doHeal: () => {
+      const { world, pending } = get();
+      if (!world || !pending || fxBusy(get().fx)) return;
+      apply(world, commitHeal(world, pending), pending, "take");
+    },
+    doRecall: () => {
+      const { world } = get();
+      if (!world || fxBusy(get().fx)) return;
+      apply(world, commitRecall(world), undefined, "take");
     },
     doBuild: (kind) => {
       const { world, buildAt } = get();

@@ -10,10 +10,11 @@ import nord from "@/assets/emberline/commanders/nord.jpg";
 import vael from "@/assets/emberline/commanders/vael.jpg";
 import heart from "@/assets/emberline/commanders/heart.jpg";
 import maw from "@/assets/emberline/commanders/maw.jpg";
+import aure from "@/assets/emberline/commanders/aure.jpg";
 
-export const CO_SRC: Record<CommanderId, string> = { nord, vael, heart, maw };
+export const CO_SRC: Record<CommanderId, string> = { nord, vael, heart, maw, aure };
 
-const FACTIONS: CommanderId[] = ["nord", "vael", "heart", "maw"];
+const FACTIONS: CommanderId[] = ["nord", "vael", "heart", "maw", "aure"];
 const PROP_KINDS = ["keep", "town", "works", "air"] as const;
 export type PropKind = (typeof PROP_KINDS)[number];
 

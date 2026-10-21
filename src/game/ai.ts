@@ -3,6 +3,7 @@ import type { Point } from "./maps";
 import {
   attacksFrom,
   allied,
+  canRecall,
   canBuild,
   canSeeUnit,
   canStrikeAfterMove,
@@ -25,6 +26,8 @@ export type Command =
   | { type: "load"; order: MoveOrder }
   | { type: "drop"; order: MoveOrder; dest: Point }
   | { type: "supply"; order: MoveOrder }
+  | { type: "heal"; order: MoveOrder }
+  | { type: "recall" }
   | { type: "build"; x: number; y: number; kind: UnitKind };
 
 function canTake(w: World, me: PlayerId, x: number, y: number): boolean {
@@ -62,6 +65,7 @@ export function planCommand(w: World): Command {
   const me = w.turn;
   const need = COMMANDERS[commanderOf(w, me)].threshold;
   if (!w.powerActive[me - 1] && w.powerMeter[me - 1] >= need) return { type: "power" };
+  if (canRecall(w)) return { type: "recall" };
 
   const ready = w.units.filter((u) => u.player === me && !u.loaded && !u.done && u.hp > 0);
 
@@ -110,6 +114,11 @@ export function planCommand(w: World): Command {
     }
   }
   if (best && best.score > 60) return best.cmd;
+
+  for (const u of ready) {
+    if (u.kind !== "captain" || u.hp > 60) continue;
+    return { type: "heal", order: orderStay(u) };
+  }
 
   let cap: { score: number; cmd: Command } | null = null;
   for (const u of ready.filter((u) => isPassenger(u.kind))) {

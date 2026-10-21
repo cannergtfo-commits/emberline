@@ -290,6 +290,7 @@ export function paint(args: PaintArgs) {
     frame: number,
     ox: number,
     oy: number,
+    level: number,
   ) => {
     const cx = gx * TILE + TILE / 2 + ox;
     const cy = gy * TILE + TILE / 2 + oy;
@@ -326,6 +327,17 @@ export function paint(args: PaintArgs) {
     if (cargo) {
       ctx.fillStyle = "#faf6ee";
       ctx.fillRect(cx + 12, cy - 20, 7, 7);
+    }
+    if (kind === "captain") {
+      ctx.fillStyle = "#f3d48a";
+      ctx.beginPath();
+      ctx.arc(gx * TILE + 12, gy * TILE + 12, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#1c1712";
+      ctx.font = "700 11px ui-sans-serif, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(Math.min(6, Math.max(1, level || 1))), gx * TILE + 12, gy * TILE + 12);
     }
     ctx.restore();
   };
@@ -367,6 +379,7 @@ export function paint(args: PaintArgs) {
       frame,
       ox,
       oy,
+      u.level || 1,
     );
     if (strike && art?.hit.length && strike.x !== undefined && strike.y !== undefined) {
       const p = (now - strike.t0) / strike.dur;

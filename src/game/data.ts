@@ -12,6 +12,7 @@ export const UNIT_KINDS = [
   "wasp",
   "dart",
   "crucible",
+  "captain",
 ] as const;
 
 export type UnitKind = (typeof UNIT_KINDS)[number];
@@ -30,7 +31,7 @@ export type Terrain =
   | "airport"
   | "hq";
 export type PlayerId = 1 | 2 | 3 | 4;
-export type CommanderId = "nord" | "vael" | "heart" | "maw";
+export type CommanderId = "nord" | "vael" | "heart" | "maw" | "aure";
 
 export interface UnitDef {
   kind: UnitKind;
@@ -230,23 +231,38 @@ export const UNITS: Record<UnitKind, UnitDef> = {
     range: { min: 1, max: 1 },
     facility: "airport",
   },
+  captain: {
+    kind: "captain",
+    name: "Captain",
+    blurb: "Your banner's leader. Grows stronger with each victory, can mend the line, and can be called back after a fall.",
+    cost: 9000,
+    move: 3,
+    vision: 2,
+    moveClass: "foot",
+    ammo: -1,
+    fuel: 99,
+    daily: 0,
+    range: { min: 1, max: 1 },
+    facility: null,
+  },
 };
 
 /** Base damage at full strength before cover and luck. 0 means cannot strike that target. */
 const ROWS: number[][] = [
-  [55, 45, 12, 5, 1, 14, 15, 25, 5, 8, 7, 0, 0],
-  [65, 55, 85, 55, 15, 75, 70, 85, 65, 12, 22, 0, 0],
-  [70, 65, 35, 6, 1, 45, 45, 55, 4, 18, 28, 0, 0],
-  [75, 70, 85, 55, 15, 75, 70, 85, 65, 10, 35, 0, 0],
-  [105, 95, 105, 85, 55, 105, 105, 105, 95, 20, 45, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [90, 85, 80, 70, 45, 70, 75, 80, 75, 0, 0, 0, 0],
-  [95, 90, 90, 80, 55, 80, 85, 90, 85, 0, 0, 0, 0],
-  [105, 95, 60, 25, 10, 45, 50, 55, 45, 120, 115, 65, 75],
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [70, 65, 75, 55, 25, 65, 65, 75, 25, 65, 55, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 100, 55, 100],
-  [110, 100, 105, 105, 90, 105, 105, 105, 95, 0, 0, 0, 0],
+  [55, 45, 12, 5, 1, 14, 15, 25, 5, 8, 7, 0, 0, 48],
+  [65, 55, 85, 55, 15, 75, 70, 85, 65, 12, 22, 0, 0, 58],
+  [70, 65, 35, 6, 1, 45, 45, 55, 4, 18, 28, 0, 0, 62],
+  [75, 70, 85, 55, 15, 75, 70, 85, 65, 10, 35, 0, 0, 68],
+  [105, 95, 105, 85, 55, 105, 105, 105, 95, 20, 45, 0, 0, 90],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [90, 85, 80, 70, 45, 70, 75, 80, 75, 0, 0, 0, 0, 80],
+  [95, 90, 90, 80, 55, 80, 85, 90, 85, 0, 0, 0, 0, 85],
+  [105, 95, 60, 25, 10, 45, 50, 55, 45, 120, 115, 65, 75, 95],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [70, 65, 75, 55, 25, 65, 65, 75, 25, 65, 55, 0, 0, 60],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 100, 100, 55, 100, 0],
+  [110, 100, 105, 105, 90, 105, 105, 105, 95, 0, 0, 0, 0, 100],
+  [70, 60, 40, 28, 12, 50, 55, 60, 35, 22, 30, 0, 0, 55],
 ];
 
 const INDEX: Record<UnitKind, number> = Object.fromEntries(
@@ -331,7 +347,40 @@ export function canCarry(kind: UnitKind): boolean {
 }
 
 export function isPassenger(kind: UnitKind): boolean {
-  return kind === "skirmisher" || kind === "jugger";
+  return kind === "skirmisher" || kind === "jugger" || kind === "captain";
+}
+
+export const CAPTAIN_CAP = 6;
+
+const XP_STEP = [0, 30, 45, 65, 90, 120];
+
+export function captainRank(level: number): number {
+  return Math.min(CAPTAIN_CAP, Math.max(1, Math.floor(level) || 1));
+}
+
+export function xpToNext(level: number): number {
+  const rank = captainRank(level);
+  return rank >= CAPTAIN_CAP ? 0 : XP_STEP[rank];
+}
+
+export function killXp(kind: UnitKind): number {
+  return Math.max(8, Math.round(UNITS[kind].cost / 250));
+}
+
+export function captainCost(level: number): number {
+  return 5000 + (captainRank(level) - 1) * 1000;
+}
+
+export function captainMods(level: number): { atk: number; def: number; move: number; vision: number; heal: number } {
+  const rank = captainRank(level);
+  const steps = rank - 1;
+  return {
+    atk: 1 + 0.12 * steps,
+    def: 1 - 0.06 * steps,
+    move: Math.floor(rank / 2),
+    vision: Math.floor(steps / 2),
+    heal: 20 + 4 * steps,
+  };
 }
 
 export interface CommanderDef {
@@ -376,6 +425,14 @@ export const COMMANDERS: Record<CommanderId, CommanderDef> = {
     blurb: "Guns and fliers hit much harder. Mortars and rails may fire after moving.",
     threshold: 21000,
   },
+  aure: {
+    id: "aure",
+    name: "Isolde Cael",
+    pact: "Aure Choir",
+    power: "Ascendant Hymn",
+    blurb: "Infantry and winged craft step one tile farther and strike harder until dusk.",
+    threshold: 19000,
+  },
 };
 
 export const COMMANDER_IDS = Object.keys(COMMANDERS) as CommanderId[];
@@ -395,6 +452,7 @@ export const UNIT_NAMES: Record<CommanderId, Record<UnitKind, string>> = {
     wasp: "Hornet",
     dart: "Falcon",
     crucible: "Condor",
+    captain: "Signe",
   },
   vael: {
     skirmisher: "Starblade",
@@ -410,6 +468,7 @@ export const UNIT_NAMES: Record<CommanderId, Record<UnitKind, string>> = {
     wasp: "Stinger",
     dart: "Needlewing",
     crucible: "Nova",
+    captain: "Aelith",
   },
   heart: {
     skirmisher: "Rifleman",
@@ -425,6 +484,7 @@ export const UNIT_NAMES: Record<CommanderId, Record<UnitKind, string>> = {
     wasp: "Viper",
     dart: "Starhawk",
     crucible: "Fortress",
+    captain: "Cole",
   },
   maw: {
     skirmisher: "Gnash",
@@ -440,6 +500,23 @@ export const UNIT_NAMES: Record<CommanderId, Record<UnitKind, string>> = {
     wasp: "Mantis",
     dart: "Bat",
     crucible: "Wyrm",
+    captain: "Gorvun",
+  },
+  aure: {
+    skirmisher: "Cherub",
+    jugger: "Oathguard",
+    outrider: "Chariot",
+    lancer: "Aurum",
+    bastion: "Sanctum",
+    hauler: "Ark",
+    mortar: "Thurible",
+    longshot: "Hymn Rail",
+    ward: "Vigil",
+    kite: "Herald",
+    wasp: "Seraph",
+    dart: "Dawnbolt",
+    crucible: "Judgment",
+    captain: "Isolde",
   },
 };
 

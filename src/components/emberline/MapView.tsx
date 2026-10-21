@@ -13,6 +13,7 @@ const emptyHints: Hints = {
   canSupply: false,
   board: null,
   canWait: false,
+  canHeal: false,
 };
 
 const MIN_SCALE = 0.45;
