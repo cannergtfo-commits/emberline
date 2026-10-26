@@ -11,10 +11,11 @@ import vael from "@/assets/emberline/commanders/vael.jpg";
 import heart from "@/assets/emberline/commanders/heart.jpg";
 import maw from "@/assets/emberline/commanders/maw.jpg";
 import aure from "@/assets/emberline/commanders/aure.jpg";
+import hana from "@/assets/emberline/commanders/hana.jpg";
 
-export const CO_SRC: Record<CommanderId, string> = { nord, vael, heart, maw, aure };
+export const CO_SRC: Record<CommanderId, string> = { nord, vael, heart, maw, aure, hana };
 
-const FACTIONS: CommanderId[] = ["nord", "vael", "heart", "maw", "aure"];
+const FACTIONS: CommanderId[] = ["nord", "vael", "heart", "maw", "aure", "hana"];
 const PROP_KINDS = ["keep", "town", "works", "air"] as const;
 export type PropKind = (typeof PROP_KINDS)[number];
 
@@ -151,7 +152,7 @@ function enliven(pack: ArtPack) {
       const row = kinds[kind];
       const still = row?.[0];
       if (!row || !(still instanceof HTMLImageElement)) continue;
-      const air = kind === "kite" || kind === "wasp" || kind === "dart";
+      const air = kind === "kite" || kind === "wasp" || kind === "dart" || kind === "crucible";
       const take = (index: number) => (row[index] instanceof HTMLImageElement ? row[index] : still);
       if (air) {
         row[6] = poseAir(still, 0, -18, -10, 1);

@@ -31,7 +31,7 @@ export type Terrain =
   | "airport"
   | "hq";
 export type PlayerId = 1 | 2 | 3 | 4;
-export type CommanderId = "nord" | "vael" | "heart" | "maw" | "aure";
+export type CommanderId = "nord" | "vael" | "heart" | "maw" | "aure" | "hana";
 
 export interface UnitDef {
   kind: UnitKind;
@@ -433,6 +433,14 @@ export const COMMANDERS: Record<CommanderId, CommanderDef> = {
     blurb: "Infantry and winged craft step one tile farther and strike harder until dusk.",
     threshold: 19000,
   },
+  hana: {
+    id: "hana",
+    name: "Mizuki Aoi",
+    pact: "Hana Court",
+    power: "Moonlit Iaido",
+    blurb: "Sword infantry strike a quarter harder. Rotors and jets slip one tile farther until dusk.",
+    threshold: 18500,
+  },
 };
 
 export const COMMANDER_IDS = Object.keys(COMMANDERS) as CommanderId[];
@@ -517,6 +525,22 @@ export const UNIT_NAMES: Record<CommanderId, Record<UnitKind, string>> = {
     dart: "Dawnbolt",
     crucible: "Judgment",
     captain: "Isolde",
+  },
+  hana: {
+    skirmisher: "Kunoichi",
+    jugger: "Raijin",
+    outrider: "Hayate",
+    lancer: "Shiden",
+    bastion: "Akuma",
+    hauler: "Norimono",
+    mortar: "Hanabi",
+    longshot: "Ryusei",
+    ward: "Suzaku",
+    kite: "Tsuru",
+    wasp: "Kamakiri",
+    dart: "Raiden",
+    crucible: "Tengu",
+    captain: "Mizuki",
   },
 };
 

@@ -365,7 +365,7 @@ export function paint(args: PaintArgs) {
       const got = order.filter((i) => frames[i]);
       return got.length >= 2 ? got : [0].filter((i) => frames[i]);
     };
-    const air = u.kind === "kite" || u.kind === "wasp" || u.kind === "dart";
+    const air = u.kind === "kite" || u.kind === "wasp" || u.kind === "dart" || u.kind === "crucible";
     let frame = 0;
     let ox = 0;
     let oy = Math.sin(now / 460 + u.x * 2.1) * (air ? 2.2 : 1.2);
@@ -382,6 +382,18 @@ export function paint(args: PaintArgs) {
       const steps = posed([4, 8, 5, 9, 1, 10, 11]);
       frame = steps[Math.floor(now / (air ? 70 : 95)) % Math.max(1, steps.length)] ?? 0;
       oy = Math.sin(now / (air ? 70 : 95)) * (air ? 3.2 : 2.4);
+    } else if (u.kind === "captain" && world.commanders[u.player - 1] === "nord") {
+      const swing = posed([12, 13, 14, 15, 16]);
+      const breath = posed([0, 6, 0, 7]);
+      const period = 3800;
+      const local = (now + u.x * 211 + u.y * 97) % period;
+      if (swing.length >= 4 && local >= 2500) {
+        frame = swing[Math.min(swing.length - 1, Math.floor((local - 2500) / 150))] ?? 0;
+        if (frame === 14) ox += 5;
+        else if (frame === 15) ox += 2;
+      } else {
+        frame = breath[Math.floor(local / 460) % Math.max(1, breath.length)] ?? 0;
+      }
     } else {
       const idle = posed([0, 6, 0, 7]);
       const tick = Math.floor(now / (air ? 280 : 480) + u.x * 1.7 + u.y);

@@ -178,6 +178,7 @@ export function moveStat(w: World, unit: Unit): number {
   ) {
     m += 1;
   }
+  if (c === "hana" && (def.moveClass === "air" || def.moveClass === "copter")) m += 1;
   return m;
 }
 
@@ -200,6 +201,7 @@ export function attackMul(w: World, unit: Unit): number {
   ) {
     return 1.35;
   }
+  if (c === "hana" && (cls === "foot" || cls === "boot")) return 1.25;
   return 1;
 }
 
